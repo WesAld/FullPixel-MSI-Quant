@@ -78,7 +78,7 @@ fpq_about_server <- function(id, state) {
       htmltools::tags$div(class = "fpq-card-grid",
         htmltools::tags$section(class = "fpq-card",
           htmltools::tags$h3("FullPixel MSI Quant"),
-          htmltools::tags$p("Application version 1.1.0"),
+          htmltools::tags$p("Application version 1.1.1"),
           htmltools::tags$p(paste("Package version", as.character(
             utils::packageVersion("FullPixelMSIQuant")))),
           htmltools::tags$p("Scientific-core version 1.0.0"),
@@ -130,7 +130,7 @@ fpq_shiny_app <- function(repository_root = fpq_repo_root()) {
         shiny::uiOutput("global_project"), shiny::uiOutput("global_validation"),
         shiny::uiOutput("global_run"),
         shiny::checkboxInput("advanced_mode", "Advanced Mode", FALSE),
-        htmltools::tags$span("App 1.1.0 - Scientific core 1.0.0"))),
+        htmltools::tags$span("App 1.1.1 - Scientific core 1.0.0"))),
     shiny::tabPanel("Home", fpq_home_ui("home")),
     shiny::tabPanel("Project", fpq_project_ui("project")),
     shiny::tabPanel("MSI Samples", fpq_sample_import_ui("sample_import")),
