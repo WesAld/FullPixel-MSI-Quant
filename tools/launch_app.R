@@ -28,9 +28,26 @@ fpq_launch_app <- function(port = 3838L, launch_browser = interactive()) {
 
 if (sys.nframe() == 0L) {
   args <- commandArgs(trailingOnly = TRUE)
-  port_arg <- if (length(args)) sub("^--port=", "", args[[1]]) else "3838"
+
+  port_values <- grep("^--port=", args, value = TRUE)
+  port_arg <- if (length(port_values)) {
+    sub("^--port=", "", port_values[[1]])
+  } else {
+    "3838"
+  }
+
+  browser_values <- grep("^--launch-browser=", args, value = TRUE)
+  launch_browser <- if (length(browser_values)) {
+    tolower(sub("^--launch-browser=", "", browser_values[[1]])) %in%
+      c("1", "true", "yes")
+  } else {
+    interactive()
+  }
+
   port <- suppressWarnings(as.integer(port_arg))
+
   if (is.na(port) || port < 1L || port > 65535L)
     stop("Port must be an integer from 1 to 65535.", call. = FALSE)
-  fpq_launch_app(port)
+
+  fpq_launch_app(port, launch_browser = launch_browser)
 }

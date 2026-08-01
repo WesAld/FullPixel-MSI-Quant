@@ -4,6 +4,16 @@ All notable changes to FullPixel MSI Quant are documented here.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-08-01
+
+### Fixed
+
+- Windows launcher now locates `Rscript.exe` automatically through `PATH` and
+  common system and user R installation directories.
+- Launching from PowerShell now opens the Shiny application in the default
+  browser automatically.
+- The R launch script now accepts an explicit browser-launch argument.
+
 ## [1.1.0] - 2026-08-01
 
 ### Added
@@ -63,6 +73,7 @@ All notable changes to FullPixel MSI Quant are documented here.
 - Release remains classified as a Technical Validation Candidate because an
   independent scientific reference oracle has not been established.
 
-[Unreleased]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/WesAld/FullPixel-MSI-Quant/releases/tag/v1.0.0
