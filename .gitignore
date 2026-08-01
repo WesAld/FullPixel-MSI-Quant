@@ -1,0 +1,78 @@
+# R sessions, package builds, and IDE state
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+*.Rcheck/
+*.tar.gz
+renv/library/
+renv/staging/
+.vscode/
+.idea/
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Credentials and private environment files
+.env
+.env.*
+*.pem
+*.key
+credentials*
+secrets*
+
+# Logs, temporary files, and workbook locks
+logs/
+*.log
+*.out
+*.err
+*.tmp
+*.temp
+~$*.xlsx
+~$*.xls
+
+# Application-generated projects and outputs
+generated-outputs/
+projects/
+local-projects/
+runs/
+results/
+reports/
+Backups/
+*.local.json
+*.local.yml
+*.local.yaml
+
+# Scientific data and generated result files
+*.imzML
+*.imzml
+*.ibd
+*.IBD
+*.raw
+*.mzML
+*.mzXML
+*.mgf
+*.rds
+*.RData
+*.xlsx
+*.xls
+*.zip
+*.7z
+*.rar
+
+# External/private regression fixtures
+tests/fixtures/external/*
+!tests/fixtures/external/README.md
+tests/fixtures/metadata/
+tests/fixtures/reports/

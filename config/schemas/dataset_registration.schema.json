@@ -1,0 +1,29 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"dataset_registration.schema.json",
+  "title":"Generic dataset registration","type":"object","additionalProperties":false,
+  "required":["schema_version","dataset_id","project_id","dataset_name","ion_mode","exposure_label","raw_data_root","raw_data_pairs","aligned_feature_list","annotated_feature_list","conditions","samples","comparisons","acquisition_metadata","column_mappings","output_location","artifact_retention","registration_status","validation_status","scientific_profile_compatibility","source_artifact_hashes","path_portability"],
+  "properties":{
+    "schema_version":{"type":"string"},"dataset_id":{"type":"string","pattern":"^dset-"},"project_id":{"type":"string","pattern":"^prj-"},"dataset_name":{"type":"string","minLength":1},
+    "ion_mode":{"enum":["POS","NEG"]},"exposure_label":{"type":"string","minLength":1},
+    "raw_data_root":{"$ref":"#/$defs/path"},"raw_data_pairs":{"type":"array","minItems":1,"items":{"$ref":"#/$defs/raw_pair"}},
+    "aligned_feature_list":{"$ref":"#/$defs/input"},"annotated_feature_list":{"anyOf":[{"$ref":"#/$defs/input"},{"type":"null"}]},
+    "conditions":{"type":"array","minItems":2,"items":{"$ref":"#/$defs/condition"}},
+    "samples":{"type":"array","minItems":2,"items":{"$ref":"#/$defs/sample"}},
+    "comparisons":{"type":"array","minItems":1,"items":{"$ref":"#/$defs/comparison"}},
+    "acquisition_metadata":{"$ref":"#/$defs/acquisition"},"column_mappings":{"$ref":"#/$defs/columns"},
+    "output_location":{"$ref":"#/$defs/path"},"artifact_retention":{"type":"object"},
+    "registration_status":{"enum":["draft","registered","invalid"]},"validation_status":{"enum":["PASS","WARNING","FAIL","NOT_EVALUABLE"]},
+    "scientific_profile_compatibility":{"enum":["compatible","incompatible","unresolved"]},"source_artifact_hashes":{"type":"object"},
+    "path_portability":{"enum":["portable","partially_portable","machine_specific"]}
+  },
+  "$defs":{
+    "path":{"type":"object","additionalProperties":false,"required":["path","path_type"],"properties":{"path":{"type":"string","minLength":1},"path_type":{"enum":["project_relative","external_absolute"]}}},
+    "input":{"type":"object","additionalProperties":false,"required":["path","path_type","role"],"properties":{"path":{"type":"string","minLength":1},"path_type":{"enum":["project_relative","external_absolute"]},"role":{"enum":["aligned_target_mz_list","putative_annotation_metadata"]},"sha256":{"type":["string","null"],"pattern":"^[A-Fa-f0-9]{64}$"}}},
+    "raw_pair":{"type":"object","additionalProperties":false,"required":["sample_id","imzml_path","ibd_path"],"properties":{"sample_id":{"type":"string","minLength":1},"imzml_path":{"type":"string","minLength":1},"ibd_path":{"type":"string","minLength":1}}},
+    "condition":{"type":"object","additionalProperties":false,"required":["condition_id","condition_label","analytical_role","display_order","is_reference"],"properties":{"condition_id":{"type":"string","minLength":1},"condition_label":{"type":"string","minLength":1},"analytical_role":{"enum":["reference","comparison","contextual"]},"display_order":{"type":"integer","minimum":1},"is_reference":{"type":"boolean"},"treatment_label":{"type":["string","null"]},"dose":{"type":["string","number","null"]}}},
+    "sample":{"type":"object","additionalProperties":false,"required":["sample_id","condition_id","replicate_id","display_label","inclusion_status","sample_order"],"properties":{"sample_id":{"type":"string","minLength":1},"condition_id":{"type":"string","minLength":1},"replicate_id":{"type":"string","minLength":1},"display_label":{"type":"string","minLength":1},"inclusion_status":{"enum":["included","excluded"]},"sample_order":{"type":"integer","minimum":1},"acquisition_metadata":{"type":"object"}}},
+    "comparison":{"type":"object","additionalProperties":false,"required":["comparison_id","comparison_label","reference_condition_id","comparison_condition_id","enabled","display_order","profile_compatibility_status"],"properties":{"comparison_id":{"type":"string","minLength":1},"comparison_label":{"type":"string","minLength":1},"reference_condition_id":{"type":"string","minLength":1},"comparison_condition_id":{"type":"string","minLength":1},"enabled":{"type":"boolean"},"display_order":{"type":"integer","minimum":1},"profile_compatibility_status":{"enum":["compatible","incompatible","unresolved"]}}},
+    "acquisition":{"type":"object","additionalProperties":false,"required":["matrix","pixel_size_um","declared_coordinate_count","observed_coordinate_count","image_dimensions"],"properties":{"matrix":{"type":["string","null"]},"pixel_size_um":{"type":["number","null"],"minimum":0},"declared_coordinate_count":{"type":["integer","null"],"minimum":1},"observed_coordinate_count":{"type":["integer","null"],"minimum":1},"image_dimensions":{"anyOf":[{"type":"object","required":["width","height"],"properties":{"width":{"type":"integer","minimum":1},"height":{"type":"integer","minimum":1}}},{"type":"null"}]}}},
+    "columns":{"type":"object","additionalProperties":false,"required":["target_mz","feature_id","annotation"],"properties":{"target_mz":{"type":"string","minLength":1},"feature_id":{"type":"string","minLength":1},"annotation":{"type":["string","null"]},"additional":{"type":"object"}}}
+  }
+}

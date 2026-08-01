@@ -1,0 +1,86 @@
+schema_version: 1.0.0
+profile_id: generic-two-group-v1
+profile_version: 1.0.0
+profile_status: technical_validation_candidate
+profile_kind: generic_two_group
+profile_scope: Generic full-pixel MALDI-MSI quantification for independent samples, two-group comparisons, or one-reference multi-group comparisons
+scientific_core_version: 1.0.0
+compatibility_boundary:
+  supported_analysis_types:
+  - compare_two_groups
+  - quantify_only
+  - compare_multiple_groups
+  compare_two_groups:
+    condition_count: 2
+    comparison_count: 1
+    minimum_biological_replicates_per_condition: 2
+    equal_replicate_counts_required: true
+  quantify_only:
+    minimum_samples_per_selected_ion_mode: 1
+    comparison_count: 0
+    output: individual_sample_columns
+  supported_ion_modes:
+  - NEG
+  - POS
+  - BOTH
+  sample_identifiers: request_driven
+  exposure_label: request_driven
+  project_name: request_driven
+  matrix: request_driven
+  pixel_size_um: request_driven
+  coordinate_count: request_driven
+  full_pixel_requirement: true
+  compare_multiple_groups:
+    minimum_condition_count: 3
+    single_reference_condition_required: true
+    minimum_biological_replicates_per_condition: 2
+    equal_replicate_counts_required: false
+    one_comparison_per_non_reference_condition: true
+validation_status:
+  classification: Technical Validation Candidate
+  reference_oracle_required: false
+  note: Structural, numerical, provenance, and preservation checks are enforced; no project-specific historical oracle is assumed.
+locked_scientific_settings:
+  target_mass_tolerance:
+    absolute_da: 0.002
+    ppm: 10
+  centroid_selection_rule: nearest centroid within tolerance; greater intensity breaks equal mass-error ties
+  spectrum_sum_normalization:
+    denominator: sum of all stored centroid intensities in the corresponding valid pixel
+    scale: 1000000
+  detection:
+    inclusive_threshold: 0
+    conservative_threshold: 1000
+    minimum_strong_pixel_count: 10
+  replicate_summary:
+    minimum_supported_replicates: 2
+    require_all_replicates_for_condition_statistics: true
+    pseudocount: none
+    imputation: none
+    pairing: none
+  quantify_only:
+    group_statistics: none
+    sample_aggregation: none
+    output_unit: one column per individual sample and readout
+  annotation:
+    minimum_high_priority_score: 0.6
+    score_consistency_tolerance: 1.0e-06
+    mz_agreement_tolerance_da: 1.0e-05
+  publication_export:
+    annotation_score_threshold: 0.6
+    numerical_audit_tolerance: 1.0e-10
+  compare_multiple_groups:
+    comparison_structure: each non-reference condition versus the single configured reference
+    group_statistics: descriptive arithmetic means, fold change, and log2 fold change
+    pseudocount: none
+    imputation: none
+    pairing: none
+    statistical_testing: none
+provenance:
+  source_profile_id: generic-two-group-v1
+  source_profile_version: 1.0.0
+  scientific_script_hashes:
+    extract_pixel_intensities: D846E8BB354B3BED88A321B8D61FE0BE2F5FE42943C3365F12AAFD6C47F96CB0
+    summarize_replicate_readouts: 3D3E2E7A6E81972FE8F6EA4D54F5BCD52F47D1B66C62E35F8E1CFF00ABB60A97
+    integrate_mzmine_annotations: 1150E5F10565B7C25784A9DD875380ACC748C95A8D5BE7B0431C1C5767C587D1
+    publication_export: generic-python-export-v1

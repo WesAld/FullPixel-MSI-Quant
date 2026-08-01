@@ -1,0 +1,12 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"run_configuration.schema.json",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","run_configuration_id","project_id","dataset_id","stage_id","selected_comparison_ids","selected_sample_ids","selected_profile","profile_override","input_artifact_ids","output_location","retention_preferences","mapping_snapshot","compatibility_status"],
+  "properties":{
+    "schema_version":{"type":"string"},"run_configuration_id":{"type":"string","pattern":"^runcfg-"},"project_id":{"type":"string","pattern":"^prj-"},"dataset_id":{"type":["string","null"]},"stage_id":{"enum":["extract_pixel_intensities","summarize_replicate_readouts","integrate_mzmine_annotations","create_combined_publication_export"]},
+    "selected_comparison_ids":{"type":"array","items":{"type":"string","minLength":1},"uniqueItems":true},"selected_sample_ids":{"type":"array","items":{"type":"string","minLength":1},"uniqueItems":true},
+    "selected_profile":{"type":"object","required":["profile_id","profile_version","scientific_core_version"]},"profile_override":{"type":["object","null"]},
+    "input_artifact_ids":{"type":"array","items":{"type":"string","pattern":"^art-"}},"output_location":{"type":"string","minLength":1},"retention_preferences":{"type":"object"},"mapping_snapshot":{"type":"object"},
+    "compatibility_status":{"enum":["compatible","incompatible","unresolved"]}
+  }
+}

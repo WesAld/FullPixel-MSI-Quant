@@ -1,0 +1,11 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"sample_metadata.schema.json",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","dataset_id","conditions","samples","comparisons"],
+  "properties":{
+    "schema_version":{"type":"string"},"dataset_id":{"type":"string","pattern":"^dset-"},
+    "conditions":{"type":"array","minItems":2,"items":{"type":"object","required":["condition_id","condition_label","analytical_role","display_order","is_reference"]}},
+    "samples":{"type":"array","minItems":2,"items":{"type":"object","required":["sample_id","condition_id","replicate_id","sample_order","inclusion_status"]}},
+    "comparisons":{"type":"array","minItems":1,"items":{"type":"object","required":["comparison_id","reference_condition_id","comparison_condition_id","enabled","display_order"]}}
+  }
+}

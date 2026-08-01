@@ -1,0 +1,197 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "req-pvl-neg-extract-001",
+  "project_id": "prj-pvl-regression",
+  "dataset_id": "dset-pvl-single-neg",
+  "run_id": "run-m2-pvl-neg-extract-001",
+  "stage_id": "extract_pixel_intensities",
+  "ion_mode": "NEG",
+  "exposure_label": "Single",
+  "scientific_profile": {
+    "profile_id": "pvl-fullpixel-reference-v1",
+    "profile_version": "1.0.0",
+    "reference_status": "validated_reference"
+  },
+  "scientific_core_version": "1.0.0",
+  "frozen_script": {
+    "script_id": "extract_pixel_intensities",
+    "repository_relative_path": "validated-source/01_extract_pixel_intensities_PUBLICATION_READY.R",
+    "sha256": "D846E8BB354B3BED88A321B8D61FE0BE2F5FE42943C3365F12AAFD6C47F96CB0"
+  },
+  "registered_inputs": {
+    "raw_data_root": "example-data/pvl-single-negative",
+    "raw_file_hash_registry": {
+      "path": "tests/fixtures/metadata/pvl_single_negative_input_hashes.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "aligned_target_table": {
+      "artifact_id": "art-pvl-aligned-targets",
+      "path": "example-data/pvl-single-negative/PVL_Single_Negative_40um_Aligned_Feature_List.csv",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "output_working_directory": "generated-outputs/example-pvl-negative-extraction",
+  "conditions": [
+    {
+      "condition_id": "CTRL",
+      "analytical_role": "reference"
+    },
+    {
+      "condition_id": "TRT",
+      "analytical_role": "comparison"
+    }
+  ],
+  "samples": [
+    {
+      "sample_id": "CTRL_R1",
+      "condition_id": "CTRL",
+      "replicate_id": "R1",
+      "imzml_path": "example-data/pvl-single-negative/CTRL_R1.imzML",
+      "ibd_path": "example-data/pvl-single-negative/CTRL_R1.IBD"
+    },
+    {
+      "sample_id": "CTRL_R2",
+      "condition_id": "CTRL",
+      "replicate_id": "R2",
+      "imzml_path": "example-data/pvl-single-negative/CTRL_R2.imzML",
+      "ibd_path": "example-data/pvl-single-negative/CTRL_R2.IBD"
+    },
+    {
+      "sample_id": "CTRL_R3",
+      "condition_id": "CTRL",
+      "replicate_id": "R3",
+      "imzml_path": "example-data/pvl-single-negative/CTRL_R3.imzML",
+      "ibd_path": "example-data/pvl-single-negative/CTRL_R3.IBD"
+    },
+    {
+      "sample_id": "TRT_R1",
+      "condition_id": "TRT",
+      "replicate_id": "R1",
+      "imzml_path": "example-data/pvl-single-negative/TRT_R1.imzML",
+      "ibd_path": "example-data/pvl-single-negative/TRT_R1.IBD"
+    },
+    {
+      "sample_id": "TRT_R2",
+      "condition_id": "TRT",
+      "replicate_id": "R2",
+      "imzml_path": "example-data/pvl-single-negative/TRT_R2.imzML",
+      "ibd_path": "example-data/pvl-single-negative/TRT_R2.IBD"
+    },
+    {
+      "sample_id": "TRT_R3",
+      "condition_id": "TRT",
+      "replicate_id": "R3",
+      "imzml_path": "example-data/pvl-single-negative/TRT_R3.imzML",
+      "ibd_path": "example-data/pvl-single-negative/TRT_R3.IBD"
+    }
+  ],
+  "replicates": [
+    {
+      "condition_id": "CTRL",
+      "replicate_id": "R1"
+    },
+    {
+      "condition_id": "CTRL",
+      "replicate_id": "R2"
+    },
+    {
+      "condition_id": "CTRL",
+      "replicate_id": "R3"
+    },
+    {
+      "condition_id": "TRT",
+      "replicate_id": "R1"
+    },
+    {
+      "condition_id": "TRT",
+      "replicate_id": "R2"
+    },
+    {
+      "condition_id": "TRT",
+      "replicate_id": "R3"
+    }
+  ],
+  "internal_role_mappings": [
+    {
+      "user_facing_value": "CTRL_R1",
+      "internal_value": "CTRL_R1",
+      "reason": "PVL reference role",
+      "compatibility_rule": "exact six-role mapping",
+      "provenance_requirement": "required"
+    },
+    {
+      "user_facing_value": "CTRL_R2",
+      "internal_value": "CTRL_R2",
+      "reason": "PVL reference role",
+      "compatibility_rule": "exact six-role mapping",
+      "provenance_requirement": "required"
+    },
+    {
+      "user_facing_value": "CTRL_R3",
+      "internal_value": "CTRL_R3",
+      "reason": "PVL reference role",
+      "compatibility_rule": "exact six-role mapping",
+      "provenance_requirement": "required"
+    },
+    {
+      "user_facing_value": "TRT_R1",
+      "internal_value": "TRT_R1",
+      "reason": "PVL reference role",
+      "compatibility_rule": "exact six-role mapping",
+      "provenance_requirement": "required"
+    },
+    {
+      "user_facing_value": "TRT_R2",
+      "internal_value": "TRT_R2",
+      "reason": "PVL reference role",
+      "compatibility_rule": "exact six-role mapping",
+      "provenance_requirement": "required"
+    },
+    {
+      "user_facing_value": "TRT_R3",
+      "internal_value": "TRT_R3",
+      "reason": "PVL reference role",
+      "compatibility_rule": "exact six-role mapping",
+      "provenance_requirement": "required"
+    }
+  ],
+  "comparison": {
+    "comparison_id": "CTRL_vs_TRT",
+    "reference_condition_id": "CTRL",
+    "comparison_condition_id": "TRT"
+  },
+  "column_mappings": {
+    "target_mz": "mz",
+    "feature_id": "id"
+  },
+  "acquisition_metadata": {
+    "matrix": "9AA",
+    "pixel_size_um": 40,
+    "full_pixel": true
+  },
+  "pixel_metadata": {
+    "expected_coordinate_count": 1600
+  },
+  "approved_scientific_configuration": {
+    "absolute_tolerance": 0.002,
+    "ppm_tolerance": 10,
+    "inclusive_detection_threshold": 0,
+    "conservative_detection_threshold": 1000,
+    "normalization_scale": 1000000,
+    "primary_detection_threshold": 1000,
+    "primary_minimum_detected_pixels": 10
+  },
+  "retention_options": {
+    "save_pixel_level_output": false
+  },
+  "environment_requirements": {
+    "r_executable": "Rscript",
+    "required_packages": [
+      "Cardinal",
+      "data.table",
+      "stringr",
+      "matrixStats"
+    ],
+    "prohibit_runtime_installation": true
+  }
+}

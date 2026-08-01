@@ -1,0 +1,117 @@
+# Scientific Method
+
+## Quantitative source
+
+Aligned MZmine features provide feature identifiers and target m/z values.
+Centroided full-pixel imzML/IBD spectra provide quantitative intensities.
+Annotated MZmine tables provide putative metadata after quantification.
+
+MZmine intensity columns are not used as the source of pixel-level
+quantification.
+
+## Target extraction
+
+For each target m/z and valid pixel:
+
+- the extraction half-window is the larger of 0.002 Da and 10 ppm of the target
+  m/z;
+- the nearest centroid inside the tolerance is selected;
+- greater intensity resolves equal mass-error ties;
+- a missing centroid remains missing or undetected according to the registered
+  output field; it is not imputed.
+
+## Spectrum-sum normalization
+
+For target \(j\) in pixel \(p\):
+
+\[
+I_{j,p}^{norm} =
+\frac{I_{j,p}^{raw}}
+{\sum_k I_{k,p}^{raw}}
+\times 10^6
+\]
+
+The denominator is the sum of all stored centroid intensities in the same valid
+pixel. The method is described as **spectrum-sum normalization**.
+
+## Detection definitions
+
+- Inclusive detection: raw target intensity greater than 0.
+- Conservative detection: raw target intensity greater than or equal to 1,000.
+- Local strong-pixel intensity requires at least 10 conservative detected
+  pixels.
+
+The declared full-pixel coordinate count must match the coordinates read from
+the imzML data.
+
+## Sample readouts
+
+Each registered sample contributes:
+
+- overall normalized signal across the complete valid full-pixel image;
+- local strong-pixel intensity;
+- conservative detected-pixel count;
+- conservative detection fraction;
+- eligibility and QC fields.
+
+## Group comparisons
+
+For comparison workflows, group means are arithmetic means of registered
+biological-replicate values.
+
+For comparison group \(T\) and reference group \(R\):
+
+\[
+FC = \frac{\bar{T}}{\bar{R}}
+\]
+
+\[
+log_2FC = \log_2\left(\frac{\bar{T}}{\bar{R}}\right)
+\]
+
+Official log2 fold change remains missing when either group mean is
+nonpositive, nonfinite, or unavailable.
+
+Multi-group analysis performs one descriptive comparison for each
+non-reference group against the single configured reference.
+
+## Missing values and inference
+
+The workflow uses:
+
+- no pseudocount;
+- no imputation;
+- no paired analysis;
+- no p-values;
+- no automatic significance threshold.
+
+Missing values remain missing. The application produces descriptive
+quantitative summaries, not inferential statistical conclusions.
+
+## Annotation integration
+
+The annotated MZmine table is joined after quantitative summarization.
+
+- Quantitative columns must be preserved value-for-value.
+- Annotation scores are retained where available.
+- The high-priority annotation-score threshold is 0.6.
+- Annotation identities are putative accurate-mass database matches.
+
+Accepted reference-profile adducts include `[M-H]-`, `[M+H]+`, `[M+Na]+`, and
+`[M+K]+`. Generic projects may retain additional annotation metadata but must
+not convert it into a confirmed identity claim.
+
+## Frozen scientific sources
+
+The four reference scripts under `validated-source/` define the registered
+scientific core. Their SHA-256 hashes are listed in
+`validated-source/SHA256SUMS` and
+`config/scientific_core_manifest.yml`.
+
+Run:
+
+```powershell
+Rscript .\tools\verify_scientific_core.R
+```
+
+A changed or missing frozen source blocks scientific execution.

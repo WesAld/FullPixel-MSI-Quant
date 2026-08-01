@@ -1,0 +1,43 @@
+Package: FullPixelMSIQuant
+Type: Package
+Title: Full-Pixel MALDI-MSI Quantification from MZmine-Aligned Features
+Version: 1.0.0
+Authors@R: person(
+    given = "Wessel",
+    family = "Alderden",
+    role = c("aut", "cre"),
+    email = "WesAld@users.noreply.github.com"
+  )
+Description: A local R Shiny workflow for extracting feature intensities from
+    centroided full-pixel MALDI mass spectrometry imaging data, applying
+    within-pixel spectrum-sum normalization, summarizing individual samples or
+    biological groups, integrating putative MZmine annotations, and exporting
+    validated workbooks with provenance and quality-control records.
+License: MIT + file LICENSE
+URL: https://github.com/WesAld/FullPixel-MSI-Quant
+BugReports: https://github.com/WesAld/FullPixel-MSI-Quant/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+SystemRequirements: Python (>= 3.10), pandas (>= 2.0), openpyxl (>= 3.1)
+Imports:
+    DT,
+    digest,
+    htmltools,
+    jsonlite,
+    later,
+    openxlsx,
+    processx,
+    shiny,
+    shinyFiles,
+    yaml
+Suggests:
+    BiocManager,
+    Cardinal,
+    data.table,
+    devtools,
+    matrixStats,
+    pkgload,
+    stringr,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

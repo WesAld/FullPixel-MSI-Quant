@@ -1,0 +1,12 @@
+# Keep ordinary source files portable.
+*.R text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ps1 text eol=crlf
+*.cff text eol=lf
+
+# Frozen scientific scripts are byte-registered. Never normalize line endings.
+validated-source/*.R -text

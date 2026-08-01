@@ -1,0 +1,60 @@
+application_id: FullPixelMSIQuant
+application_name: FullPixel MSI Quant
+manifest_schema_version: 1.0.0
+scientific_core_version: 1.0.0
+registration_timestamp: '2026-07-30T16:07:19+02:00'
+repository_root_policy: The repository root is resolved dynamically. Repository files use repository-relative paths; user-selected scientific inputs and project outputs may remain external and are recorded in project provenance.
+immutability_statement: The registered scientific scripts are frozen scientific source files. They must not be edited in place, reformatted, wrapped, repaired, or have their registered hashes updated automatically. A scientifically approved change requires a new scientific-core version and new regression evidence.
+scripts:
+- script_id: extract_pixel_intensities
+  user_facing_stage: Extract Pixel Intensities
+  historical_script_number: '01'
+  original_filename: 01_extract_pixel_intensities_PUBLICATION_READY.R
+  stored_filename: 01_extract_pixel_intensities_PUBLICATION_READY.R
+  repository_relative_path: validated-source/01_extract_pixel_intensities_PUBLICATION_READY.R
+  sha256: D846E8BB354B3BED88A321B8D61FE0BE2F5FE42943C3365F12AAFD6C47F96CB0
+  file_size_bytes: 45831
+  date_registered: '2026-07-30'
+  scientific_core_version: 1.0.0
+  validation_status: frozen_hash_verified
+  reference_output_availability: technical_validation_evidence_external_not_bundled
+  notes: The frozen source hash is verified. Technical workflow validation was completed with external PVL MALDI-MSI test data; raw data and derived outputs are not distributed in this repository.
+- script_id: summarize_replicate_readouts
+  user_facing_stage: Summarize Replicate Readouts
+  historical_script_number: '03'
+  original_filename: 03_three_readout_replicate_summary_PUBLICATION_READY.R
+  stored_filename: 03_three_readout_replicate_summary_PUBLICATION_READY.R
+  repository_relative_path: validated-source/03_three_readout_replicate_summary_PUBLICATION_READY.R
+  sha256: 3D3E2E7A6E81972FE8F6EA4D54F5BCD52F47D1B66C62E35F8E1CFF00ABB60A97
+  file_size_bytes: 53820
+  date_registered: '2026-07-30'
+  scientific_core_version: 1.0.0
+  validation_status: frozen_hash_verified
+  reference_output_availability: technical_validation_evidence_external_not_bundled
+  notes: The frozen source hash is verified. Technical workflow validation was completed with external PVL MALDI-MSI test data; validation inputs and outputs are not distributed in this repository.
+- script_id: integrate_mzmine_annotations
+  user_facing_stage: Integrate MZmine Annotations
+  historical_script_number: '04'
+  original_filename: 04_merge_annotations_three_readouts_PUBLICATION_READY.R
+  stored_filename: 04_merge_annotations_three_readouts_PUBLICATION_READY.R
+  repository_relative_path: validated-source/04_merge_annotations_three_readouts_PUBLICATION_READY.R
+  sha256: 1150E5F10565B7C25784A9DD875380ACC748C95A8D5BE7B0431C1C5767C587D1
+  file_size_bytes: 56140
+  date_registered: '2026-07-30'
+  scientific_core_version: 1.0.0
+  validation_status: frozen_hash_verified
+  reference_output_availability: technical_validation_evidence_external_not_bundled
+  notes: The frozen source hash is verified. Technical workflow validation was completed with external PVL MALDI-MSI test data; validation inputs and outputs are not distributed in this repository.
+- script_id: create_combined_publication_export
+  user_facing_stage: Create Combined Publication Export
+  historical_script_number: '07'
+  original_filename: 07_export_three_graphs_to_graphpad_xlsx_VALIDATED_PUBLICATION_READY.R
+  stored_filename: 07_export_three_graphs_to_graphpad_xlsx_VALIDATED_PUBLICATION_READY.R
+  repository_relative_path: validated-source/07_export_three_graphs_to_graphpad_xlsx_VALIDATED_PUBLICATION_READY.R
+  sha256: 94055F3210D95D6AF0EA35D246D9F234A24FF429496E179DA91EE58A1FBBB0A0
+  file_size_bytes: 52499
+  date_registered: '2026-07-30'
+  scientific_core_version: 1.0.0
+  validation_status: frozen_hash_verified
+  reference_output_availability: technical_validation_evidence_external_not_bundled
+  notes: The frozen source hash is verified. Technical workflow validation was completed with external PVL MALDI-MSI test data; validation inputs and outputs are not distributed in this repository.

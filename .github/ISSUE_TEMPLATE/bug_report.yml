@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a reproducible FullPixel MSI Quant problem
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not upload private scientific data, credentials, or unredacted personal paths.
+  - type: input
+    id: version
+    attributes:
+      label: FullPixel MSI Quant version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows version, R version, and Python version
+    validations:
+      required: true
+  - type: dropdown
+    id: design
+    attributes:
+      label: Analysis design
+      options:
+        - Quantify samples only
+        - Compare two groups
+        - Compare multiple groups
+    validations:
+      required: true
+  - type: input
+    id: stage
+    attributes:
+      label: Failing workflow stage
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Include the exact displayed error and steps to reproduce it.
+    validations:
+      required: true

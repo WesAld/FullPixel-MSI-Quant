@@ -1,0 +1,41 @@
+schema_version: "1.0.0"
+template_status: reference_example_not_active
+template_scope: PVL-specific
+warnings:
+  - Not a universal application default.
+  - Not suitable for another dataset without scientific and compatibility review.
+project_id: prj-pvl-reference-example
+dataset_id: dset-pvl-single-neg-reference
+dataset_name: PVL Single Negative reference example
+ion_mode: NEG
+exposure_label: Single
+selected_profile:
+  profile_id: pvl-fullpixel-reference-v1
+  profile_version: "1.0.0"
+  historical_alias: fullpixel-40um-1600px-v1
+conditions:
+  - {condition_id: CTRL, condition_label: CTRL, analytical_role: reference, display_order: 1, is_reference: true}
+  - {condition_id: TRT, condition_label: TRT, analytical_role: comparison, display_order: 2, is_reference: false}
+samples:
+  - {sample_id: CTRL_R1, condition_id: CTRL, replicate_id: R1, sample_order: 1, inclusion_status: included}
+  - {sample_id: CTRL_R2, condition_id: CTRL, replicate_id: R2, sample_order: 2, inclusion_status: included}
+  - {sample_id: CTRL_R3, condition_id: CTRL, replicate_id: R3, sample_order: 3, inclusion_status: included}
+  - {sample_id: TRT_R1, condition_id: TRT, replicate_id: R1, sample_order: 4, inclusion_status: included}
+  - {sample_id: TRT_R2, condition_id: TRT, replicate_id: R2, sample_order: 5, inclusion_status: included}
+  - {sample_id: TRT_R3, condition_id: TRT, replicate_id: R3, sample_order: 6, inclusion_status: included}
+comparisons:
+  - {comparison_id: CTRL_vs_TRT, comparison_label: TRT versus CTRL, reference_condition_id: CTRL, comparison_condition_id: TRT, enabled: true, display_order: 1}
+acquisition_metadata:
+  matrix: 9AA
+  pixel_size_um: 40
+  declared_coordinate_count: 1600
+  image_dimensions: {width: 40, height: 40}
+column_mappings:
+  target_mz: user_must_map
+  feature_id: user_must_map
+  annotation: user_must_map_if_annotation_stage_used
+paths:
+  raw_data_root: user_must_select
+  aligned_feature_list: user_must_select
+  annotated_feature_list: user_must_select_if_used
+  output_location: user_must_select

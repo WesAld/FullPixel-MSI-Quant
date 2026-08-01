@@ -1,0 +1,49 @@
+schema_version: "1.0.0"
+ion_mode: [POS, NEG]
+ion_mode_display: {POS: Positive, NEG: Negative}
+configuration_classification:
+  - dataset_user_input
+  - dataset_user_mapping
+  - profile_locked_scientific
+  - profile_overridable_scientific
+  - derived
+  - application_internal
+  - display_only
+  - provenance_only
+workflow_stage_id:
+  - extract_pixel_intensities
+  - summarize_replicate_readouts
+  - integrate_mzmine_annotations
+  - create_combined_publication_export
+run_status:
+  - configured
+  - preflight_running
+  - preflight_failed
+  - ready
+  - starting
+  - running
+  - cancelling
+  - cancelled
+  - failed
+  - validating
+  - validation_failed
+  - completed
+validation_status: [PASS, WARNING, FAIL, NOT_EVALUABLE]
+validation_severity: [INFO, WARNING, CRITICAL]
+provenance_relationship:
+  - used_by
+  - produced_by
+  - derived_from
+  - supersedes
+  - validates
+  - configured_by
+  - generated_from
+  - maps_to
+path_type: [repository_relative, project_relative, external_absolute]
+artifact_state: [registered, active, superseded, stale, invalid]
+log_level: [DEBUG, INFO, WARNING, ERROR, CRITICAL]
+analytical_role: [reference, comparison, contextual]
+inclusion_status: [included, excluded]
+profile_compatibility_status: [compatible, incompatible, unresolved]
+override_status: [not_requested, pending_confirmation, confirmed_custom_profile, rejected]
+compatibility_result: [structurally_valid, profile_compatible, profile_incompatible, environment_incompatible, unresolved_scientific_compatibility]

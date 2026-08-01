@@ -1,0 +1,148 @@
+{
+  "schema_version": "1.0.0",
+  "application_version": "1.0.0",
+  "adapter_version": "script04-adapter-1.0.0",
+  "request_id": "req-m6-script04-recovery-fixture",
+  "project_id": "prj-m6-test",
+  "dataset_id": "dset-m6-script04-test",
+  "run_id": "run-m6-script04-recovery-fixture",
+  "stage_id": "integrate_mzmine_annotations",
+  "ion_mode": "NEG",
+  "exposure_label": "Single",
+  "scientific_profile": {
+    "profile_id": "pvl-fullpixel-reference-v1",
+    "profile_version": "1.0.0",
+    "reference_status": "validated_reference"
+  },
+  "scientific_core_version": "1.0.0",
+  "frozen_script": {
+    "script_id": "merge_annotations_three_readouts",
+    "repository_relative_path": "validated-source/04_merge_annotations_three_readouts_PUBLICATION_READY.R",
+    "sha256": "1150E5F10565B7C25784A9DD875380ACC748C95A8D5BE7B0431C1C5767C587D1"
+  },
+  "registered_inputs": {
+    "replicate_summary_artifact": {
+      "artifact_id": "art-m6-replicate-summary",
+      "artifact_type": "replicate_readout_summary",
+      "path": "tests/fixtures/synthetic/m6_replicate_summary.csv",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "annotation_artifact": {
+      "artifact_id": "art-m6-annotation-input",
+      "artifact_type": "annotated_feature_list",
+      "path": "tests/fixtures/synthetic/m6_annotation_input.csv",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "annotation_column_mappings": {
+    "feature_id": "feature_id",
+    "target_mz": "mz",
+    "compound_name": "compound_name"
+  },
+  "samples": [
+    {
+      "sample_id": "CTRL_R1",
+      "condition_id": "CTRL",
+      "replicate_id": "R1",
+      "ion_mode": "NEG",
+      "inclusion_status": "included"
+    },
+    {
+      "sample_id": "CTRL_R2",
+      "condition_id": "CTRL",
+      "replicate_id": "R2",
+      "ion_mode": "NEG",
+      "inclusion_status": "included"
+    },
+    {
+      "sample_id": "CTRL_R3",
+      "condition_id": "CTRL",
+      "replicate_id": "R3",
+      "ion_mode": "NEG",
+      "inclusion_status": "included"
+    },
+    {
+      "sample_id": "TRT_R1",
+      "condition_id": "TRT",
+      "replicate_id": "R1",
+      "ion_mode": "NEG",
+      "inclusion_status": "included"
+    },
+    {
+      "sample_id": "TRT_R2",
+      "condition_id": "TRT",
+      "replicate_id": "R2",
+      "ion_mode": "NEG",
+      "inclusion_status": "included"
+    },
+    {
+      "sample_id": "TRT_R3",
+      "condition_id": "TRT",
+      "replicate_id": "R3",
+      "ion_mode": "NEG",
+      "inclusion_status": "included"
+    }
+  ],
+  "conditions": [
+    {
+      "condition_id": "CTRL",
+      "analytical_role": "reference"
+    },
+    {
+      "condition_id": "TRT",
+      "analytical_role": "comparison"
+    }
+  ],
+  "replicates": [
+    {
+      "condition_id": "CTRL",
+      "replicate_id": "R1"
+    },
+    {
+      "condition_id": "CTRL",
+      "replicate_id": "R2"
+    },
+    {
+      "condition_id": "CTRL",
+      "replicate_id": "R3"
+    },
+    {
+      "condition_id": "TRT",
+      "replicate_id": "R1"
+    },
+    {
+      "condition_id": "TRT",
+      "replicate_id": "R2"
+    },
+    {
+      "condition_id": "TRT",
+      "replicate_id": "R3"
+    }
+  ],
+  "comparison": {
+    "comparison_id": "CTRL_vs_TRT",
+    "reference_condition_id": "CTRL",
+    "comparison_condition_id": "TRT"
+  },
+  "output_working_directory": "generated-outputs/m6-script04-recovery-fixture",
+  "expected_output_artifact_types": [
+    "annotated_three_readout_master"
+  ],
+  "configuration_snapshot": {
+    "analysis_type": "compare_two_groups",
+    "ion_mode": "NEG",
+    "exposure_label": "Single"
+  },
+  "regression_reference": {
+    "path": "tests/fixtures/expected/m6_script04_expected_master.csv",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "classification": "test_fixture_only"
+  },
+  "environment_requirements": {
+    "r_executable": "Rscript",
+    "required_packages": [],
+    "prohibit_runtime_installation": true
+  },
+  "analysis_type": "compare_two_groups",
+  "execution_adapter": "pvl_reference"
+}

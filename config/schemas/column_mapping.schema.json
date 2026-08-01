@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"column_mapping.schema.json",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","target_mz","feature_id","annotation","mapping_status"],
+  "properties":{"schema_version":{"type":"string"},"target_mz":{"type":"string","minLength":1},"feature_id":{"type":"string","minLength":1},"annotation":{"type":["string","null"]},"additional":{"type":"object"},"mapping_status":{"enum":["unmapped","detected_unconfirmed","user_confirmed","invalid"]}}
+}

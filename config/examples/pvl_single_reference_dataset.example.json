@@ -1,0 +1,31 @@
+{
+  "schema_version":"1.0.0","dataset_id":"dset-pvl-reference","project_id":"prj-pvl-reference","dataset_name":"PVL-specific reference example; not a universal default","ion_mode":"NEG","exposure_label":"Single",
+  "raw_data_root":{"path":"example-data/pvl/raw","path_type":"project_relative"},
+  "raw_data_pairs":[
+    {"sample_id":"CTRL_R1","imzml_path":"example-data/pvl/raw/CTRL_R1.imzML","ibd_path":"example-data/pvl/raw/CTRL_R1.ibd"},
+    {"sample_id":"CTRL_R2","imzml_path":"example-data/pvl/raw/CTRL_R2.imzML","ibd_path":"example-data/pvl/raw/CTRL_R2.ibd"},
+    {"sample_id":"CTRL_R3","imzml_path":"example-data/pvl/raw/CTRL_R3.imzML","ibd_path":"example-data/pvl/raw/CTRL_R3.ibd"},
+    {"sample_id":"TRT_R1","imzml_path":"example-data/pvl/raw/TRT_R1.imzML","ibd_path":"example-data/pvl/raw/TRT_R1.ibd"},
+    {"sample_id":"TRT_R2","imzml_path":"example-data/pvl/raw/TRT_R2.imzML","ibd_path":"example-data/pvl/raw/TRT_R2.ibd"},
+    {"sample_id":"TRT_R3","imzml_path":"example-data/pvl/raw/TRT_R3.imzML","ibd_path":"example-data/pvl/raw/TRT_R3.ibd"}
+  ],
+  "aligned_feature_list":{"path":"example-data/pvl/aligned-targets.csv","path_type":"project_relative","role":"aligned_target_mz_list","sha256":null},
+  "annotated_feature_list":{"path":"example-data/pvl/annotated-features.csv","path_type":"project_relative","role":"putative_annotation_metadata","sha256":null},
+  "conditions":[
+    {"condition_id":"CTRL","condition_label":"CTRL","analytical_role":"reference","display_order":1,"is_reference":true,"treatment_label":null,"dose":null},
+    {"condition_id":"TRT","condition_label":"TRT","analytical_role":"comparison","display_order":2,"is_reference":false,"treatment_label":"TRT","dose":null}
+  ],
+  "samples":[
+    {"sample_id":"CTRL_R1","condition_id":"CTRL","replicate_id":"R1","display_label":"CTRL_R1","inclusion_status":"included","sample_order":1,"acquisition_metadata":{}},
+    {"sample_id":"CTRL_R2","condition_id":"CTRL","replicate_id":"R2","display_label":"CTRL_R2","inclusion_status":"included","sample_order":2,"acquisition_metadata":{}},
+    {"sample_id":"CTRL_R3","condition_id":"CTRL","replicate_id":"R3","display_label":"CTRL_R3","inclusion_status":"included","sample_order":3,"acquisition_metadata":{}},
+    {"sample_id":"TRT_R1","condition_id":"TRT","replicate_id":"R1","display_label":"TRT_R1","inclusion_status":"included","sample_order":4,"acquisition_metadata":{}},
+    {"sample_id":"TRT_R2","condition_id":"TRT","replicate_id":"R2","display_label":"TRT_R2","inclusion_status":"included","sample_order":5,"acquisition_metadata":{}},
+    {"sample_id":"TRT_R3","condition_id":"TRT","replicate_id":"R3","display_label":"TRT_R3","inclusion_status":"included","sample_order":6,"acquisition_metadata":{}}
+  ],
+  "comparisons":[{"comparison_id":"CTRL_vs_TRT","comparison_label":"TRT versus CTRL","reference_condition_id":"CTRL","comparison_condition_id":"TRT","enabled":true,"display_order":1,"profile_compatibility_status":"compatible"}],
+  "acquisition_metadata":{"matrix":"9AA","pixel_size_um":40,"declared_coordinate_count":1600,"observed_coordinate_count":null,"image_dimensions":{"width":40,"height":40}},
+  "column_mappings":{"target_mz":"user_must_map","feature_id":"user_must_map","annotation":"user_must_map","additional":{}},
+  "output_location":{"path":"analysis/pvl-reference","path_type":"project_relative"},"artifact_retention":{"pixel_level_csv":false},
+  "registration_status":"draft","validation_status":"NOT_EVALUABLE","scientific_profile_compatibility":"compatible","source_artifact_hashes":{},"path_portability":"portable"
+}

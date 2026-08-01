@@ -1,0 +1,25 @@
+schema_version: "1.0.0"
+profile_id: pvl-fullpixel-reference-v1
+profile_version: "1.0.0"
+profile_status: approved_alias_of_historical_reference
+profile_kind: validated_reference_alias
+predecessor: fullpixel-40um-1600px-v1
+aliases: [fullpixel-40um-1600px-v1]
+scientific_core_version: "1.0.0"
+migration_status: canonical_alias_registered
+resolution_rule: >-
+  Resolve all scientific settings and compatibility boundaries value-for-value
+  from fullpixel-40um-1600px-v1 version 1.0.0. This alias does not override,
+  duplicate, or change a scientific setting.
+compatibility_boundaries:
+  exposure: Single
+  ion_mode: NEG
+  conditions: 2
+  internal_condition_roles: [CTRL, TRT]
+  replicates_per_condition: 3
+  internal_sample_ids: [CTRL_R1, CTRL_R2, CTRL_R3, TRT_R1, TRT_R2, TRT_R3]
+  matrix: 9AA
+  pixel_size_um: 40
+  coordinate_count: 1600
+override_policy: all_reference_scientific_settings_locked
+provenance_requirement: Record both canonical profile ID and historical predecessor.

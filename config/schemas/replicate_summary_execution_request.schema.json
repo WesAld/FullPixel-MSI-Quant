@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "replicate_summary_execution_request.schema.json",
+  "title": "Approved Script 03 execution request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "project_id",
+    "dataset_id",
+    "run_id",
+    "stage_id",
+    "ion_mode",
+    "exposure_label",
+    "scientific_profile",
+    "scientific_core_version",
+    "frozen_script",
+    "registered_inputs",
+    "regression_reference",
+    "output_working_directory",
+    "conditions",
+    "samples",
+    "replicates",
+    "comparison",
+    "environment_requirements"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^req-"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^prj-"
+    },
+    "dataset_id": {
+      "type": "string",
+      "pattern": "^dset-"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run-"
+    },
+    "stage_id": {
+      "const": "summarize_replicate_readouts"
+    },
+    "ion_mode": {
+      "const": "NEG"
+    },
+    "exposure_label": {
+      "const": "Single"
+    },
+    "scientific_profile": {
+      "type": "object",
+      "required": [
+        "profile_id",
+        "profile_version",
+        "reference_status"
+      ]
+    },
+    "scientific_core_version": {
+      "const": "1.0.0"
+    },
+    "frozen_script": {
+      "type": "object",
+      "required": [
+        "script_id",
+        "repository_relative_path",
+        "sha256"
+      ]
+    },
+    "registered_inputs": {
+      "type": "object",
+      "required": [
+        "pixel_intensity_artifact"
+      ],
+      "properties": {
+        "pixel_intensity_artifact": {
+          "type": "object",
+          "required": [
+            "artifact_id",
+            "path",
+            "sha256",
+            "project_id",
+            "dataset_id",
+            "active_status",
+            "validation_status"
+          ]
+        }
+      }
+    },
+    "regression_reference": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256",
+        "classification"
+      ]
+    },
+    "output_working_directory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "conditions": {
+      "type": "array",
+      "minItems": 2
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6
+    },
+    "replicates": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6
+    },
+    "comparison": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "environment_requirements": {
+      "type": "object",
+      "required": [
+        "r_executable",
+        "required_packages",
+        "prohibit_runtime_installation"
+      ]
+    },
+    "comparisons": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [
+          "comparison_id",
+          "reference_condition_id",
+          "comparison_condition_id"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "execution_adapter": {
+      "type": "string"
+    },
+    "analysis_type": {
+      "type": "string"
+    },
+    "display_metadata": {
+      "type": "object"
+    },
+    "column_mappings": {
+      "type": "object"
+    },
+    "acquisition_metadata": {
+      "type": "object"
+    },
+    "pixel_metadata": {
+      "type": "object"
+    },
+    "approved_scientific_configuration": {
+      "type": "object"
+    },
+    "retention_options": {
+      "type": "object"
+    }
+  }
+}

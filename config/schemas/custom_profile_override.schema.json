@@ -1,0 +1,10 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"custom_profile_override.schema.json",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","override_id","base_profile_id","base_profile_version","custom_profile_id","custom_profile_version","changes","explicit_confirmation","output_label","project_manifest_reference","run_manifest_requirement","provenance_requirement","status"],
+  "properties":{
+    "schema_version":{"type":"string"},"override_id":{"type":"string","pattern":"^ovr-"},"base_profile_id":{"type":"string"},"base_profile_version":{"type":"string"},"custom_profile_id":{"type":"string"},"custom_profile_version":{"type":"string"},
+    "changes":{"type":"array","minItems":1,"items":{"type":"object","required":["field","old_value","new_value","scientific_consequence","reason"]}},
+    "explicit_confirmation":{"const":true},"output_label":{"const":"custom_non_reference"},"project_manifest_reference":{"type":"string"},"run_manifest_requirement":{"const":"include_full_override_snapshot"},"provenance_requirement":{"const":"record_base_profile_and_all_changes"},"status":{"enum":["confirmed_custom_profile","rejected"]}
+  }
+}

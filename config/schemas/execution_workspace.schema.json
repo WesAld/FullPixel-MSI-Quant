@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "execution_workspace.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_id", "run_id", "path", "state",
+    "prepared_at", "updated_at", "retention"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "project_id": {"type": "string"},
+    "run_id": {"type": "string"},
+    "path": {"type": "string"},
+    "state": {"enum": ["prepared", "active", "completed_preserved",
+      "failed_preserved", "cancelled_preserved", "eligible_for_cleanup",
+      "cleaned"]},
+    "prepared_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "retention": {"type": "string"}
+  }
+}

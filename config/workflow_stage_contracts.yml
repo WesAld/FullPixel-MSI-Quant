@@ -1,0 +1,117 @@
+schema_version: "1.0.0"
+m2_execution_scope:
+  exposure: Single
+  ion_mode: NEG
+  approved_prototype_stage: extract_pixel_intensities
+  adapter_strategy: hash_verified_temporary_configuration_copy
+  later_stage_status:
+    summarize_replicate_readouts: interface_analyzed_not_adapter_approved
+    integrate_mzmine_annotations: interface_analyzed_not_adapter_approved
+    create_combined_publication_export: blocked_missing_frozen_version_POS_and_NEG_reference
+  positive_status: blocked_unresolved_matrix_profile_mapping
+  sequential_status: configuration_recognized_but_unvalidated
+m5_execution_scope:
+  exposure: Single
+  ion_mode: NEG
+  profile: pvl-fullpixel-reference-v1
+  approved_stages: [extract_pixel_intensities, summarize_replicate_readouts]
+  dependency: pixel_intensity_table_to_replicate_readout_summary
+  script03_reference_status: provisional_golden
+  blocked_stages: [integrate_mzmine_annotations, create_combined_publication_export]
+stages:
+  - stage_id: extract_pixel_intensities
+    display_name: Extract Pixel Intensities
+    historical_script: {script_id: SCI-01, historical_number: "01", filename: 01_extract_pixel_intensities_PUBLICATION_READY.R}
+    purpose: Extract target features from original centroided full-pixel imzML/IBD spectra and produce spectrum-sum-normalized pixel-level quantitative artifacts.
+    allowed_ion_modes: [POS, NEG]
+    required_input_artifact_types: [registered_raw_data, aligned_feature_target_list]
+    optional_input_artifact_types: []
+    required_profile_fields: [full_pixel_requirement, target_mass_tolerance, centroid_selection_rule, spectrum_sum_normalization]
+    required_dataset_configuration: [registered_samples, raw_data_pairs, condition_assignments, replicate_assignments, ion_mode, exposure_label, acquisition_metadata, column_mappings]
+    required_metadata: [dataset_id, configured_ion_mode, configured_exposure_label]
+    preflight_checks: [frozen_hash_matches, all_configured_raw_pairs_present, target_list_readable, mappings_complete, profile_compatible]
+    execution_inputs: [exact_registered_paths, immutable_profile_snapshot, isolated_working_directory]
+    expected_output_artifact_types: [pixel_intensity_table]
+    output_validation_checks: [output_exists, hash_recorded, required_columns_present, row_count_plausible]
+    success_criteria: [process_exit_zero, required_outputs_validated]
+    failure_criteria: [preflight_failure, nonzero_exit, missing_output, blocking_validation_failure]
+    cancellation_implications: Terminate the isolated process tree; quarantine partial outputs and never activate them.
+    provenance_requirements: [source_hashes, scientific_script_hash, profile_version, environment, run_id]
+    downstream_dependencies: [summarize_replicate_readouts]
+    rerun_behavior: Create a new run and artifacts; never overwrite the prior registered run.
+    superseding_behavior: Activate only validated outputs and mark dependent outputs stale.
+    interface_limitations: [Frozen script has top-level configuration and direct execution, has no approved CLI contract, and may contain package-installation behavior.]
+    current_core_compatibility: {profile: fullpixel-40um-1600px-v1, restriction: Exact PVL sample/internal role and acquisition constraints apply; additional conditions or replicates must cause an incompatibility failure and may never be discarded or merged.}
+    future_adapter_responsibilities: [resolve exact paths, resolve confirmed column mappings, validate design compatibility, map user identifiers only when scientifically approved, record every mapping in provenance, restore user-facing identifiers where valid]
+  - stage_id: summarize_replicate_readouts
+    display_name: Summarize Replicate Readouts
+    historical_script: {script_id: SCI-03, historical_number: "03", filename: 03_three_readout_replicate_summary_PUBLICATION_READY.R}
+    purpose: Produce the official biological-replicate quantitative summaries and three validated readouts.
+    allowed_ion_modes: [POS, NEG]
+    required_input_artifact_types: [pixel_intensity_table]
+    optional_input_artifact_types: []
+    required_profile_fields: [strong_pixel_threshold, minimum_replicate_support, official_formulas, missing_value_rules]
+    required_dataset_configuration: [registered_samples, explicit_condition_assignments, explicit_replicate_assignments, explicit_comparisons, sample_order]
+    required_metadata: [dataset_id, configured_ion_mode, configured_exposure_label]
+    preflight_checks: [frozen_hash_matches, upstream_artifact_active, upstream_hash_unchanged, profile_compatible]
+    execution_inputs: [exact_registered_upstream_artifact, immutable_profile_snapshot, isolated_working_directory]
+    expected_output_artifact_types: [replicate_readout_summary]
+    output_validation_checks: [output_exists, required_columns_present, quantitative_invariants_hold, hash_recorded]
+    success_criteria: [process_exit_zero, required_outputs_validated]
+    failure_criteria: [preflight_failure, nonzero_exit, missing_output, blocking_validation_failure]
+    cancellation_implications: Terminate the isolated process tree; quarantine partial outputs and never activate them.
+    provenance_requirements: [input_artifact_id, input_hash, scientific_script_hash, profile_version, environment, run_id]
+    downstream_dependencies: [integrate_mzmine_annotations]
+    rerun_behavior: Create a new immutable run record and new artifacts.
+    superseding_behavior: A newly activated summary supersedes the old active summary and makes downstream derivatives stale.
+    interface_limitations: [Frozen script has no approved CLI contract and uses top-level configuration.]
+    current_core_compatibility: {profile: fullpixel-40um-1600px-v1, restriction: Exactly the PVL two-condition three-replicate internal design is validated; arbitrary generic designs remain stored but execution is blocked for this core.}
+    future_adapter_responsibilities: [validate every selected comparison, preserve distinct treatment groups, reject unsupported replicate counts, record internal-role mappings, never infer groups solely from filenames]
+  - stage_id: integrate_mzmine_annotations
+    display_name: Integrate MZmine Annotations
+    historical_script: {script_id: SCI-04, historical_number: "04", filename: 04_merge_annotations_three_readouts_PUBLICATION_READY.R}
+    purpose: Merge putative accurate-mass annotation metadata while preserving the official quantitative values from the replicate summary.
+    allowed_ion_modes: [POS, NEG]
+    required_input_artifact_types: [replicate_readout_summary, annotated_feature_list]
+    optional_input_artifact_types: []
+    required_profile_fields: [annotation_score_threshold, score_consistency_tolerance, accepted_adducts_by_ion_mode, mz_agreement_tolerance]
+    required_dataset_configuration: [annotated_feature_list, annotation_column_mapping, feature_id_mapping, target_mz_mapping]
+    required_metadata: [dataset_id, configured_ion_mode, configured_exposure_label]
+    preflight_checks: [frozen_hash_matches, quantitative_source_active, annotation_list_readable, ion_mode_adducts_resolved]
+    execution_inputs: [exact_registered_summary, exact_registered_annotation_list, immutable_profile_snapshot, isolated_working_directory]
+    expected_output_artifact_types: [annotated_master]
+    output_validation_checks: [output_exists, quantitative_values_preserved, annotation_rules_hold, hash_recorded]
+    success_criteria: [process_exit_zero, quantitative_preservation_passes, required_outputs_validated]
+    failure_criteria: [preflight_failure, nonzero_exit, quantitative_drift, missing_output, blocking_validation_failure]
+    cancellation_implications: Terminate the isolated process tree; quarantine partial outputs and never activate them.
+    provenance_requirements: [both_input_artifact_ids, both_input_hashes, scientific_script_hash, profile_version, environment, run_id]
+    downstream_dependencies: [create_combined_publication_export]
+    rerun_behavior: Create a new immutable run record and new annotated master.
+    superseding_behavior: A newly activated annotated master supersedes its branch predecessor and makes combined exports stale.
+    interface_limitations: [Frozen script has no approved CLI contract and uses top-level configuration.]
+    current_core_compatibility: {profile: fullpixel-40um-1600px-v1, restriction: PVL input-column and naming expectations require an approved adapter mapping; quantitative values must remain unchanged.}
+    future_adapter_responsibilities: [resolve annotation columns, map feature identifiers, preserve quantitative columns exactly, record mappings and hashes]
+  - stage_id: create_combined_publication_export
+    display_name: Create Combined Publication Export
+    historical_script: {script_id: SCI-07, historical_number: "07", filename: 07_export_three_graphs_to_graphpad_xlsx_VALIDATED_PUBLICATION_READY.R}
+    purpose: Combine the annotated-master branches required by the selected publication-export profile and produce publication-oriented exports without recalculating official statistics.
+    allowed_ion_modes: [POS, NEG]
+    required_input_artifact_types: [annotated_master]
+    optional_input_artifact_types: []
+    required_profile_fields: [accepted_adducts_by_ion_mode, numerical_audit_tolerance, expected_coordinate_count]
+    required_dataset_configuration: [enabled_ion_mode_branches, exact_annotated_master_artifact_ids, output_location]
+    required_metadata: [project_id, configured_exposure_label]
+    preflight_checks: [frozen_hash_matches, positive_master_active, negative_master_active, both_hashes_unchanged, profiles_compatible]
+    execution_inputs: [exact_registered_positive_master, exact_registered_negative_master, immutable_profile_snapshot, isolated_working_directory]
+    expected_output_artifact_types: [combined_master, publication_workbook, graphpad_export]
+    output_validation_checks: [outputs_exist, official_statistics_unchanged, both_ion_modes_present, hashes_recorded]
+    success_criteria: [both_annotated_masters_exist_and_validate, process_exit_zero, required_outputs_validated]
+    failure_criteria: [either_annotated_master_missing, preflight_failure, nonzero_exit, numerical_audit_failure, blocking_validation_failure]
+    cancellation_implications: Terminate the isolated process tree; quarantine partial outputs and never activate them.
+    provenance_requirements: [both_master_ids, both_master_hashes, scientific_script_hash, profile_version, environment, run_id]
+    downstream_dependencies: []
+    rerun_behavior: Create a new immutable run and export set.
+    superseding_behavior: Newly activated exports supersede older exports; previous files remain traceable.
+    interface_limitations: [Frozen script has no approved CLI contract and uses top-level configuration.]
+    current_core_compatibility: {profile: fullpixel-40um-1600px-v1, restriction: The frozen publication export requires one validated POS and one validated NEG annotated master and the PVL audit denominator; this is not a global requirement for all future profiles.}
+    future_adapter_responsibilities: [enforce selected-profile branch requirements, resolve exact artifacts by ID and hash, capture configured output names, retain branch provenance]

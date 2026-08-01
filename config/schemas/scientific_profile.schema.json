@@ -1,0 +1,13 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"scientific_profile.schema.json",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","profile_id","profile_version","profile_kind","profile_status","scientific_core_version","method_settings","compatibility_constraints","override_policy","provenance"],
+  "properties":{
+    "schema_version":{"type":"string"},"profile_id":{"type":"string","minLength":1},"profile_version":{"type":"string","minLength":1},
+    "profile_kind":{"enum":["validated_reference","custom_non_reference","experimental"]},"profile_status":{"enum":["proposed","approved","deprecated","proposed_with_unresolved_fields"]},"scientific_core_version":{"type":"string"},
+    "method_settings":{"type":"object","required":["mz_tolerance","centroid_selection_rule","normalization","detection","replicate_support","readout_formulas","missing_value_policy","pseudocount_policy","imputation_policy","statistical_testing_policy","annotation_rules"]},
+    "compatibility_constraints":{"type":"object","description":"Optional dataset restrictions of this profile/core; not global schema constraints."},
+    "override_policy":{"type":"object","required":["locked_fields","custom_profile_fields","unsupported_fields"]},
+    "provenance":{"type":"object","required":["source_profile_id","source_profile_version","scientific_script_hashes"]}
+  }
+}

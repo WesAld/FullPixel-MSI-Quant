@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "worker_heartbeat.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "worker_id", "project_id", "run_id",
+    "heartbeat_timestamp", "phase", "process_id"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "worker_id": {"type": "string"},
+    "project_id": {"type": "string"},
+    "run_id": {"type": "string"},
+    "heartbeat_timestamp": {"type": "string", "format": "date-time"},
+    "phase": {"type": "string"},
+    "process_id": {"type": "integer", "minimum": 1}
+  }
+}

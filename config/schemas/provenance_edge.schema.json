@@ -1,0 +1,8 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"provenance_edge.schema.json",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","provenance_edge_id","project_id","subject_type","subject_id","relationship","object_type","object_id","recorded_at","run_id","evidence_hash","notes"],
+  "properties":{
+    "schema_version":{"type":"string"},"provenance_edge_id":{"type":"string","pattern":"^prov-"},"project_id":{"type":"string"},"subject_type":{"enum":["source_file","run","artifact","scientific_script","scientific_profile","configuration","validation_record","environment","execution_copy"]},"subject_id":{"type":"string"},"relationship":{"enum":["used_by","produced_by","derived_from","supersedes","validates","configured_by","generated_from","maps_to"]},"object_type":{"enum":["source_file","run","artifact","scientific_script","scientific_profile","configuration","validation_record","environment","execution_copy"]},"object_id":{"type":"string"},"recorded_at":{"type":"string","format":"date-time"},"run_id":{"type":["string","null"]},"evidence_hash":{"type":["string","null"],"pattern":"^[A-Fa-f0-9]{64}$"},"notes":{"type":["string","null"]}
+  }
+}

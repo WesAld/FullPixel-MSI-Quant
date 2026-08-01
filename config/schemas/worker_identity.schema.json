@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "worker_identity.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "worker_id", "project_id", "run_id",
+    "process_id", "parent_process_id", "launch_timestamp",
+    "worker_script_path", "execution_request_path", "execution_request_hash",
+    "repository_root", "working_directory_path", "current_stage"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "worker_id": {"type": "string", "pattern": "^worker-"},
+    "project_id": {"type": "string", "pattern": "^prj-"},
+    "run_id": {"type": "string", "pattern": "^run-"},
+    "process_id": {"type": "integer", "minimum": 1},
+    "parent_process_id": {"type": ["integer", "null"]},
+    "launch_timestamp": {"type": "string", "format": "date-time"},
+    "worker_script_path": {"type": "string"},
+    "execution_request_path": {"type": "string"},
+    "execution_request_hash": {"type": "string", "pattern": "^[A-F0-9]{64}$"},
+    "repository_root": {"type": "string"},
+    "working_directory_path": {"type": "string"},
+    "current_stage": {"type": "string"}
+  }
+}

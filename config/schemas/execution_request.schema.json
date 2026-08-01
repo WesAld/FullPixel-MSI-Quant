@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "execution_request.schema.json",
+  "title": "FullPixel MSI Quant extraction execution request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "project_id",
+    "dataset_id",
+    "run_id",
+    "stage_id",
+    "ion_mode",
+    "exposure_label",
+    "scientific_profile",
+    "scientific_core_version",
+    "frozen_script",
+    "registered_inputs",
+    "output_working_directory",
+    "samples",
+    "conditions",
+    "replicates",
+    "internal_role_mappings",
+    "comparison",
+    "column_mappings",
+    "acquisition_metadata",
+    "pixel_metadata",
+    "approved_scientific_configuration",
+    "retention_options",
+    "environment_requirements"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^req-"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^prj-"
+    },
+    "dataset_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run-"
+    },
+    "stage_id": {
+      "const": "extract_pixel_intensities"
+    },
+    "ion_mode": {
+      "enum": [
+        "POS",
+        "NEG"
+      ]
+    },
+    "exposure_label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scientific_profile": {
+      "type": "object",
+      "required": [
+        "profile_id",
+        "profile_version",
+        "reference_status"
+      ],
+      "properties": {
+        "profile_id": {
+          "enum": [
+            "generic-two-group-v1",
+            "pvl-fullpixel-reference-v1",
+            "fullpixel-40um-1600px-v1"
+          ]
+        },
+        "profile_version": {
+          "const": "1.0.0"
+        },
+        "reference_status": {
+          "enum": [
+            "validated_reference",
+            "technical_validation_candidate"
+          ]
+        }
+      }
+    },
+    "scientific_core_version": {
+      "const": "1.0.0"
+    },
+    "frozen_script": {
+      "type": "object",
+      "required": [
+        "script_id",
+        "repository_relative_path",
+        "sha256"
+      ]
+    },
+    "registered_inputs": {
+      "type": "object",
+      "required": [
+        "raw_data_root",
+        "raw_file_hash_registry",
+        "aligned_target_table"
+      ],
+      "properties": {
+        "raw_data_root": {
+          "type": "string"
+        },
+        "raw_file_hash_registry": {
+          "type": "object",
+          "required": [
+            "path",
+            "sha256"
+          ]
+        },
+        "aligned_target_table": {
+          "type": "object",
+          "required": [
+            "artifact_id",
+            "path",
+            "sha256"
+          ]
+        }
+      }
+    },
+    "output_working_directory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 1
+    },
+    "conditions": {
+      "type": "array",
+      "minItems": 1
+    },
+    "replicates": {
+      "type": "array",
+      "minItems": 1
+    },
+    "internal_role_mappings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "user_facing_value",
+          "internal_value",
+          "reason",
+          "compatibility_rule",
+          "provenance_requirement"
+        ]
+      }
+    },
+    "comparison": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "comparison_id",
+            "reference_condition_id",
+            "comparison_condition_id"
+          ]
+        }
+      ]
+    },
+    "column_mappings": {
+      "type": "object",
+      "required": [
+        "target_mz",
+        "feature_id"
+      ]
+    },
+    "acquisition_metadata": {
+      "type": "object",
+      "required": [
+        "matrix",
+        "pixel_size_um",
+        "full_pixel"
+      ]
+    },
+    "pixel_metadata": {
+      "type": "object",
+      "required": [
+        "expected_coordinate_count"
+      ]
+    },
+    "approved_scientific_configuration": {
+      "type": "object"
+    },
+    "retention_options": {
+      "type": "object"
+    },
+    "environment_requirements": {
+      "type": "object",
+      "required": [
+        "r_executable",
+        "required_packages",
+        "prohibit_runtime_installation"
+      ]
+    },
+    "execution_adapter": {
+      "enum": [
+        "pvl_reference",
+        "generic_two_group",
+        "generic_quantify_only",
+        "generic_multi_group"
+      ]
+    },
+    "display_metadata": {
+      "type": "object"
+    },
+    "analysis_type": {
+      "enum": [
+        "quantify_only",
+        "compare_two_groups",
+        "compare_multiple_groups"
+      ]
+    },
+    "comparisons": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [
+          "comparison_id",
+          "reference_condition_id",
+          "comparison_condition_id"
+        ],
+        "properties": {
+          "comparison_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reference_condition_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "comparison_condition_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

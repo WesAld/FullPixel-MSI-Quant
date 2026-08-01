@@ -1,0 +1,167 @@
+schema_version: "1.0.0"
+profile_id: fullpixel-40um-1600px-v1
+profile_version: "1.0.0"
+profile_status: proposed_with_unresolved_fields
+profile_kind: validated_reference
+profile_scope: PVL-specific frozen-core compatibility profile; not a universal application default
+identity_assessment:
+  current_name_status: retained_for_provenance
+  assessment: >-
+    The 40 um pixel size and 1600-coordinate count are PVL acquisition and
+    frozen-core compatibility properties, not universal scientific-method
+    requirements. Encoding them in future generic profile identifiers is not
+    recommended.
+  proposed_successor_name: pvl-fullpixel-reference-v1
+  migration_status: canonical_alias_registered_historical_id_preserved
+  alias_policy: Preserve fullpixel-40um-1600px-v1 as the registered historical ID and resolve the canonical successor through the explicit alias record.
+scientific_core_version: "1.0.0"
+compatibility_boundary:
+  condition_count: 2
+  reference_condition_internal_id: CTRL
+  comparison_condition_internal_id: TRT
+  biological_replicates_per_condition: 3
+  sample_identifiers: [CTRL_R1, CTRL_R2, CTRL_R3, TRT_R1, TRT_R2, TRT_R3]
+  extra_conditions_or_samples_policy: reject_without_silent_discard_or_merge
+  note: These are frozen PVL core restrictions, not generic schema restrictions.
+override_policy:
+  locked:
+    - centroid_selection_rule
+    - spectrum_sum_normalization
+    - official_readouts
+    - missing_value_rules
+    - pseudocount_rule
+    - imputation_rule
+    - statistical_testing_rule
+  custom_profile_required:
+    - target_mass_tolerance
+    - detection
+    - replicate_support
+    - annotation
+  unsupported_without_new_validation:
+    - compatibility_boundary
+supported_exposure:
+  active: Single
+  unresolved:
+    - value: Sequential
+      reason: >-
+        Configuration code recognizes Sequential, but a complete
+        publication-ready frozen-core regression chain has not been verified.
+      source_needed: Approved Sequential regression inputs and outputs.
+      blocks: Sequential support only; does not block M1 contract definition.
+supported_ion_modes:
+  - NEG
+  - POS
+dataset_naming_rule: 'PVL_<Exposure>_<Positive|Negative>'
+sample_ids:
+  - CTRL_R1
+  - CTRL_R2
+  - CTRL_R3
+  - TRT_R1
+  - TRT_R2
+  - TRT_R3
+condition_labels:
+  control: CTRL
+  treatment: TRT
+biological_replicate_mapping:
+  CTRL_R1: {condition: CTRL, replicate: R1}
+  CTRL_R2: {condition: CTRL, replicate: R2}
+  CTRL_R3: {condition: CTRL, replicate: R3}
+  TRT_R1: {condition: TRT, replicate: R1}
+  TRT_R2: {condition: TRT, replicate: R2}
+  TRT_R3: {condition: TRT, replicate: R3}
+full_pixel_requirement: true
+expected_coordinate_count: 1600
+pixel_size_um: 40
+matrix_requirements:
+  NEG:
+    value: 9AA
+    status: verified_from_frozen_extraction_default
+  POS:
+    value: null
+    status: unresolved
+    reason: Positive-mode matrix is not specified by the frozen extraction default.
+    source_needed: Approved Positive acquisition/profile documentation and regression data.
+    blocks: Positive extraction implementation and final profile approval.
+target_mass_tolerance:
+  absolute_da: 0.002
+  ppm: 10
+  rule: maximum_of_absolute_da_and_target_mz_times_ppm
+centroid_selection_rule: nearest centroid within the configured extraction half-window
+tie_breaking_rule: select the greater intensity when centroid mass errors tie
+spectrum_sum_normalization:
+  denominator: sum of all stored centroid intensities in the corresponding valid pixel
+  scale: 1000000
+  terminology: spectrum-sum-normalized intensity
+detection:
+  inclusive:
+    raw_intensity_rule: greater_than
+    threshold: 0
+  conservative:
+    raw_intensity_rule: greater_than_or_equal
+    threshold: 1000
+  primary_detection_threshold: 1000
+  minimum_strong_pixel_count: 10
+replicate_support:
+  minimum_supported_replicates: 2
+  require_all_replicates_for_condition_statistics: true
+official_readouts:
+  overall: 'log2(arithmetic mean TRT overall normalized signal / arithmetic mean CTRL overall normalized signal)'
+  positive_pixel_intensity: 'log2(arithmetic mean TRT local strong-pixel intensity / arithmetic mean CTRL local strong-pixel intensity)'
+  detection_fraction: 'arithmetic mean TRT conservative detection fraction - arithmetic mean CTRL conservative detection fraction'
+missing_value_rules:
+  preserve_missing: true
+  replace_with_zero: false
+  require_all_replicates_when_configured: true
+division_by_zero_behavior: official log2 fold change is missing when either condition mean is nonpositive or nonfinite
+pseudocount_rule: no pseudocount
+imputation_rule: no imputation
+statistical_testing_rule: no p-values or statistical significance testing
+paired_analysis_rule: no paired analysis
+candidate_rules:
+  high_cv_threshold_percent: 30
+  absolute_overall_log2fc_threshold: 1
+annotation:
+  high_priority_score_threshold: 0.6
+  score_thresholds: [0.6, 0.7, 0.8]
+  score_consistency_tolerance: 0.000001
+  mz_agreement_tolerance_da: 0.00001
+  accepted_adducts:
+    NEG: ['[M-H]-']
+    POS: ['[M+H]+', '[M+Na]+', '[M+K]+']
+  identity_claim: putative accurate-mass database match
+  supporting_local_abs_log2fc_threshold: 1
+  supporting_detection_fraction_difference_threshold: 0.10
+publication_export:
+  annotation_score_threshold: 0.6
+  expected_all_coordinate_pixels: 1600
+  require_all_replicates_for_audit: true
+  minimum_replicates_if_not_all_required: 2
+  numerical_audit_tolerance: 0.0000000001
+expected_required_inputs:
+  extract_pixel_intensities:
+    - original centroided full-pixel imzML/IBD data
+    - aligned MZmine feature target list
+  summarize_replicate_readouts:
+    - six-sample combined feature summary
+  integrate_mzmine_annotations:
+    - official three-readout quantitative summary
+    - annotated MZmine feature list
+  create_combined_publication_export:
+    - validated Positive annotated master
+    - validated Negative annotated master
+expected_output_artifact_classes:
+  - six_sample_feature_summary
+  - three_readout_summary
+  - annotated_master
+  - combined_master
+  - graphpad_export
+  - publication_workbook
+unresolved_fields:
+  - field: matrix_requirements.POS
+    reason: Not verified by the frozen extraction default.
+    source_needed: Approved Positive acquisition/profile documentation and regression data.
+    blocks_milestone: Positive extraction implementation; final profile approval
+  - field: supported_exposure.Sequential
+    reason: Recognized by code but not verified through the complete frozen-core chain.
+    source_needed: Approved Sequential regression inputs and outputs.
+    blocks_milestone: Sequential support; not M1

@@ -1,0 +1,12 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"dataset_configuration.schema.json",
+  "title":"Dataset configuration contract",
+  "description":"The authoritative generic dataset structure is dataset_registration.schema.json; this configuration record references a registered dataset plus editable design selections.",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","project_id","dataset_id","dataset_registration","selected_scientific_profile","configuration_status"],
+  "properties":{
+    "schema_version":{"type":"string"},"project_id":{"type":"string","pattern":"^prj-"},"dataset_id":{"type":"string","pattern":"^dset-"},
+    "dataset_registration":{"type":"string","minLength":1},"selected_scientific_profile":{"type":"object","required":["profile_id","profile_version"],"properties":{"profile_id":{"type":"string","minLength":1},"profile_version":{"type":"string","minLength":1}},"additionalProperties":false},
+    "configuration_status":{"enum":["draft","structurally_valid","profile_compatible","profile_incompatible"]}
+  }
+}

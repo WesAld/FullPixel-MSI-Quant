@@ -1,0 +1,23 @@
+{
+  "schema_version":"1.0.0","dataset_id":"dset-example-neg","project_id":"prj-example-001","dataset_name":"Non-scientific generalized example","ion_mode":"NEG","exposure_label":"Custom acquisition",
+  "raw_data_root":{"path":"E:/example/raw","path_type":"external_absolute"},
+  "raw_data_pairs":[
+    {"sample_id":"vehicle-a","imzml_path":"E:/example/raw/vehicle-a.imzML","ibd_path":"E:/example/raw/vehicle-a.ibd"},
+    {"sample_id":"dose-a","imzml_path":"E:/example/raw/dose-a.imzML","ibd_path":"E:/example/raw/dose-a.ibd"}
+  ],
+  "aligned_feature_list":{"path":"E:/example/aligned.csv","path_type":"external_absolute","role":"aligned_target_mz_list","sha256":null},
+  "annotated_feature_list":null,
+  "conditions":[
+    {"condition_id":"vehicle","condition_label":"Vehicle","analytical_role":"reference","display_order":1,"is_reference":true,"treatment_label":null,"dose":null},
+    {"condition_id":"dose-low","condition_label":"Low dose","analytical_role":"comparison","display_order":2,"is_reference":false,"treatment_label":"Example compound","dose":"low"}
+  ],
+  "samples":[
+    {"sample_id":"vehicle-a","condition_id":"vehicle","replicate_id":"bio-a","display_label":"Vehicle A","inclusion_status":"included","sample_order":1,"acquisition_metadata":{}},
+    {"sample_id":"dose-a","condition_id":"dose-low","replicate_id":"bio-a","display_label":"Dose A","inclusion_status":"included","sample_order":2,"acquisition_metadata":{}}
+  ],
+  "comparisons":[{"comparison_id":"cmp-low","comparison_label":"Low dose versus Vehicle","reference_condition_id":"vehicle","comparison_condition_id":"dose-low","enabled":true,"display_order":1,"profile_compatibility_status":"unresolved"}],
+  "acquisition_metadata":{"matrix":"custom-matrix","pixel_size_um":55,"declared_coordinate_count":null,"observed_coordinate_count":null,"image_dimensions":null},
+  "column_mappings":{"target_mz":"mz_custom","feature_id":"feature_custom","annotation":null,"additional":{}},
+  "output_location":{"path":"analysis/example","path_type":"project_relative"},"artifact_retention":{"pixel_level_csv":false},
+  "registration_status":"draft","validation_status":"NOT_EVALUABLE","scientific_profile_compatibility":"unresolved","source_artifact_hashes":{},"path_portability":"machine_specific"
+}

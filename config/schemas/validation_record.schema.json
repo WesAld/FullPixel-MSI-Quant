@@ -1,0 +1,9 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"validation_record.schema.json",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","validation_record_id","project_id","run_id","artifact_id","stage_id","ion_mode","check_id","check_name","category","severity","status","observed_value","expected_value","message","scientific_consequence","remediation","affected_sample","affected_feature","affected_file","timestamp","validator_version","profile_version","blocking_status"],
+  "properties":{
+    "schema_version":{"type":"string"},"validation_record_id":{"type":"string","pattern":"^val-"},"project_id":{"type":"string"},"run_id":{"type":["string","null"]},"artifact_id":{"type":["string","null"]},"stage_id":{"type":["string","null"]},"ion_mode":{"type":["string","null"],"enum":["POS","NEG",null]},"check_id":{"type":"string"},"check_name":{"type":"string"},"category":{"enum":["schema","input","scientific_profile","integrity","output","provenance","environment"]},"severity":{"enum":["INFO","WARNING","CRITICAL"]},"status":{"enum":["PASS","WARNING","FAIL","NOT_EVALUABLE"]},"observed_value":{},"expected_value":{},"message":{"type":"string"},"scientific_consequence":{"type":"string"},"remediation":{"type":"string"},"affected_sample":{"type":["string","null"]},"affected_feature":{"type":["string","null"]},"affected_file":{"type":["string","null"]},"timestamp":{"type":"string","format":"date-time"},"validator_version":{"type":"string"},"profile_version":{"type":"string"},"blocking_status":{"type":"boolean"}
+  }
+}
+

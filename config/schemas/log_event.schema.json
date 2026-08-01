@@ -1,0 +1,9 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"log_event.schema.json",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","timestamp","level","run_id","project_id","stage_id","ion_mode","event_code","message","phase","sample_id","file","progress_current","progress_total","exception_class","diagnostic_details","stream"],
+  "properties":{
+    "schema_version":{"type":"string"},"timestamp":{"type":"string","format":"date-time"},"level":{"enum":["DEBUG","INFO","WARNING","ERROR","CRITICAL"]},"run_id":{"type":["string","null"]},"project_id":{"type":["string","null"]},"stage_id":{"type":["string","null"]},"ion_mode":{"type":["string","null"],"enum":["POS","NEG",null]},"event_code":{"type":"string"},"message":{"type":"string"},"phase":{"type":["string","null"]},"sample_id":{"type":["string","null"]},"file":{"type":["string","null"]},"progress_current":{"type":["integer","null"],"minimum":0},"progress_total":{"type":["integer","null"],"minimum":0},"exception_class":{"type":["string","null"]},"diagnostic_details":{"type":"object"},"stream":{"enum":["user_progress","scientific_stdout","scientific_stderr","application_diagnostic","audit"]}
+  }
+}
+

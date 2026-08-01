@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cancellation_request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "cancellation_request_id", "project_id",
+    "run_id", "worker_id", "process_id", "requested_at", "method",
+    "escalation_policy", "termination_confirmed"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "cancellation_request_id": {"type": "string", "pattern": "^cancel-"},
+    "project_id": {"type": "string"},
+    "run_id": {"type": "string"},
+    "worker_id": {"type": "string"},
+    "process_id": {"type": "integer", "minimum": 1},
+    "requested_at": {"type": "string", "format": "date-time"},
+    "method": {"const": "cooperative_marker"},
+    "escalation_policy": {"type": "string"},
+    "termination_confirmed": {"const": false}
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"adapter_run_report.schema.json",
+  "type":"object","additionalProperties":true,
+  "required":["schema_version","run_id","status","category","execution_started","partial_outputs_exist","outputs_registered","frozen_script_hash","execution_copy_hash","configuration_transformations","stdout_path","stderr_path","exit_status","produced_outputs","validation_records","provenance_edges","recommended_correction"],
+  "properties":{
+    "schema_version":{"const":"1.0.0"},"run_id":{"type":"string"},"status":{"enum":["completed","blocked","failed","validation_failed"]},"category":{"enum":["scientific","configuration","environment","infrastructure","none"]},"execution_started":{"type":"boolean"},"partial_outputs_exist":{"type":"boolean"},"outputs_registered":{"type":"boolean"},"frozen_script_hash":{"type":"string"},"execution_copy_hash":{"type":["string","null"]},"configuration_transformations":{"type":"array"},"stdout_path":{"type":["string","null"]},"stderr_path":{"type":["string","null"]},"exit_status":{"type":["integer","null"]},"produced_outputs":{"type":"array"},"validation_records":{"type":"array"},"provenance_edges":{"type":"array"},"recommended_correction":{"type":["string","null"]}
+  }
+}
