@@ -1,6 +1,6 @@
 # Architecture
 
-FullPixel MSI Quant 1.0.0 separates user interaction, orchestration, scientific
+FullPixel MSI Quant 1.1.0 separates user interaction, orchestration, scientific
 execution, and persisted project state.
 
 ```mermaid
