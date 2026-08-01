@@ -147,3 +147,48 @@ test_that("custom strict tolerance persists in saved configuration", {
   expect_equal(settings$ppm, 8)
   expect_equal(settings$absolute_da, 0.0018)
 })
+
+test_that("Save Configuration persists the current interactive panel values", {
+  root <- tempfile("fpq-tolerance-ui-save-")
+  project <- fpq_create_project(
+    root,
+    "prj-tolerance-ui-save",
+    "Tolerance UI save test"
+  )
+  config <- list(
+    schema_version = "1.0.0",
+    dataset_id = "dset-project-configuration",
+    conditions = list(),
+    samples = list(),
+    comparisons = list(),
+    mass_tolerance = fpq_default_mass_tolerance()
+  )
+  state <- fpq_new_app_state(fpq_repo_root())
+  state$project(project)
+  state$configuration(config)
+
+  shiny::testServer(fpq_design_server, args = list(state = state), {
+    session$setInputs(
+      mass_tolerance_mode = "custom_strict_combined",
+      custom_ppm_tolerance = 5,
+      custom_absolute_da_tolerance = 0.0015,
+      save = 1
+    )
+    session$flushReact()
+    expect_false(state$dirty())
+  })
+
+  reopened <- fpq_load_configuration(
+    project,
+    "datasets",
+    "dset-project-configuration"
+  )
+  settings <- fpq_mass_tolerance_settings(reopened)
+  expect_identical(settings$mode, "custom_strict_combined")
+  expect_equal(settings$ppm, 5)
+  expect_equal(settings$absolute_da, 0.0015)
+  expect_identical(
+    settings$rule,
+    "minimum_of_absolute_da_and_target_mz_times_ppm"
+  )
+})

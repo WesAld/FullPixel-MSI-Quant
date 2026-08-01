@@ -388,13 +388,65 @@ fpq_design_server <- function(id, state) {
     shiny::observeEvent(input$save, {
       project <- state$project()
       if (is.null(project)) return(shiny::showNotification("Open a project first.", type = "error"))
-      config <- state$configuration()
-      config$schema_version <- config$schema_version %||% "1.0.0"
-      config$dataset_id <- config$dataset_id %||% "dset-project-configuration"
       tryCatch({
-        fpq_save_configuration(project, "datasets", config$dataset_id, config,
-                               fpq_validate_dynamic_configuration)
-        state$dirty(FALSE); shiny::showNotification("Configuration saved.", type = "message")
+        config <- fpq_set_mass_tolerance(
+          state$configuration(),
+          input$mass_tolerance_mode,
+          input$custom_ppm_tolerance,
+          input$custom_absolute_da_tolerance
+        )
+        config$schema_version <- config$schema_version %||% "1.0.0"
+        config$dataset_id <- config$dataset_id %||% "dset-project-configuration"
+        saved <- fpq_save_configuration(
+          project,
+          "datasets",
+          config$dataset_id,
+          config,
+          fpq_validate_dynamic_configuration
+        )
+        persisted <- fpq_load_configuration(
+          project,
+          "datasets",
+          config$dataset_id
+        )
+        requested_settings <- fpq_mass_tolerance_settings(config)
+        persisted_settings <- fpq_mass_tolerance_settings(persisted)
+        persistence_ok <-
+          identical(persisted_settings$mode, requested_settings$mode) &&
+          isTRUE(all.equal(persisted_settings$ppm, requested_settings$ppm)) &&
+          isTRUE(all.equal(
+            persisted_settings$absolute_da,
+            requested_settings$absolute_da
+          )) &&
+          identical(persisted_settings$rule, requested_settings$rule)
+        if (!isTRUE(persistence_ok))
+          fpq_stop(
+            "mass_tolerance.persistence_mismatch",
+            "Saved mass-tolerance settings do not match the interactive panel.",
+            "configuration"
+          )
+        state$configuration(persisted)
+        state$project(saved$project)
+        state$dirty(FALSE)
+        shiny::showNotification(
+          paste0(
+            "Configuration saved: ",
+            format(persisted_settings$ppm, trim = TRUE),
+            " ppm and ",
+            format(
+              persisted_settings$absolute_da,
+              trim = TRUE,
+              scientific = FALSE
+            ),
+            " Da using the ",
+            if (identical(
+              persisted_settings$rule,
+              "minimum_of_absolute_da_and_target_mz_times_ppm"
+            )) "smaller" else "larger",
+            " window."
+          ),
+          type = "message"
+        )
       }, error = function(e) state$last_error(e))
     })
     shiny::observeEvent(input$load_demo, {
