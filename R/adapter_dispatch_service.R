@@ -113,7 +113,9 @@ fpq_dispatch_compatibility_configuration <- function(request) {
     exposure_label = request$exposure_label,
     conditions = conditions,
     samples = samples,
-    comparisons = comparisons
+    comparisons = comparisons,
+    mass_tolerance = request$display_metadata$mass_tolerance %||%
+      fpq_default_mass_tolerance()
   )
 }
 

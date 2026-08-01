@@ -1,4 +1,5 @@
 fpq_validate_dynamic_configuration <- function(config) {
+  fpq_validate_mass_tolerance_configuration(config)
   conditions <- config$conditions %||% list()
   samples <- config$samples %||% list()
   comparisons <- config$comparisons %||% list()
@@ -33,6 +34,112 @@ fpq_validate_dynamic_configuration <- function(config) {
   invisible(TRUE)
 }
 `%||%` <- function(x, y) if (is.null(x)) y else x
+
+fpq_default_mass_tolerance <- function() {
+  list(
+    mode = "validated_default",
+    ppm = 10,
+    absolute_da = 0.002,
+    rule = "maximum_of_absolute_da_and_target_mz_times_ppm"
+  )
+}
+
+fpq_mass_tolerance_settings <- function(config) {
+  defaults <- fpq_default_mass_tolerance()
+  configured <- config$mass_tolerance %||% list()
+  if (!is.list(configured)) configured <- list()
+  mode <- as.character(configured$mode %||% defaults$mode)
+  ppm <- suppressWarnings(as.numeric(configured$ppm %||% defaults$ppm))
+  absolute_da <- suppressWarnings(as.numeric(
+    configured$absolute_da %||% defaults$absolute_da
+  ))
+  rule <- as.character(configured$rule %||% if (identical(
+    mode, "custom_strict_combined"))
+    "minimum_of_absolute_da_and_target_mz_times_ppm" else defaults$rule)
+  if (identical(mode, "validated_default")) {
+    ppm <- defaults$ppm
+    absolute_da <- defaults$absolute_da
+    rule <- defaults$rule
+  }
+  list(
+    mode = mode,
+    ppm = ppm,
+    absolute_da = absolute_da,
+    rule = rule,
+    validated_default = identical(mode, "validated_default") &&
+      isTRUE(all.equal(ppm, defaults$ppm)) &&
+      isTRUE(all.equal(absolute_da, defaults$absolute_da)) &&
+      identical(rule, defaults$rule)
+  )
+}
+
+fpq_validate_mass_tolerance_configuration <- function(config) {
+  configured <- config$mass_tolerance
+  if (is.null(configured)) return(invisible(TRUE))
+  if (!is.list(configured))
+    fpq_stop("mass_tolerance.invalid", "Mass tolerance must be a configuration object.")
+  mode <- as.character(configured$mode %||% "")
+  allowed_modes <- c("validated_default", "custom_strict_combined")
+  if (length(mode) != 1L || is.na(mode) || !mode %in% allowed_modes)
+    fpq_stop(
+      "mass_tolerance.mode",
+      "Mass-tolerance mode must be validated_default or custom_strict_combined."
+    )
+  ppm <- suppressWarnings(as.numeric(configured$ppm %||% NA_real_))
+  absolute_da <- suppressWarnings(as.numeric(
+    configured$absolute_da %||% NA_real_
+  ))
+  rule <- as.character(configured$rule %||% "")
+  if (length(ppm) != 1L || !is.finite(ppm) || ppm < 0.1 || ppm > 100)
+    fpq_stop(
+      "mass_tolerance.ppm",
+      "PPM tolerance must be between 0.1 and 100."
+    )
+  if (length(absolute_da) != 1L || !is.finite(absolute_da) ||
+      absolute_da < 0.000001 || absolute_da > 1)
+    fpq_stop(
+      "mass_tolerance.absolute_da",
+      "Absolute m/z tolerance must be between 0.000001 and 1 Da."
+    )
+  if (identical(mode, "validated_default")) {
+    if (!isTRUE(all.equal(ppm, 10)) ||
+        !isTRUE(all.equal(absolute_da, 0.002)) ||
+        !identical(rule, "maximum_of_absolute_da_and_target_mz_times_ppm"))
+      fpq_stop(
+        "mass_tolerance.default_mismatch",
+        "Validated-default mode must use max(10 ppm, 0.002 Da)."
+      )
+  }
+  if (identical(mode, "custom_strict_combined") &&
+      !identical(rule, "minimum_of_absolute_da_and_target_mz_times_ppm"))
+    fpq_stop(
+      "mass_tolerance.rule",
+      "Custom strict mode must use the smaller of the ppm-derived and absolute Da tolerances."
+    )
+  invisible(TRUE)
+}
+
+fpq_set_mass_tolerance <- function(config, mode, ppm = 10,
+                                   absolute_da = 0.002) {
+  mode <- as.character(mode %||% "")
+  ppm <- suppressWarnings(as.numeric(ppm))
+  absolute_da <- suppressWarnings(as.numeric(absolute_da))
+  if (identical(mode, "validated_default")) {
+    ppm <- 10
+    absolute_da <- 0.002
+    rule <- "maximum_of_absolute_da_and_target_mz_times_ppm"
+  } else {
+    rule <- "minimum_of_absolute_da_and_target_mz_times_ppm"
+  }
+  config$mass_tolerance <- list(
+    mode = mode,
+    ppm = ppm,
+    absolute_da = absolute_da,
+    rule = rule
+  )
+  fpq_validate_mass_tolerance_configuration(config)
+  config
+}
 
 fpq_save_configuration <- function(project, kind, id, value, validator = NULL,
                                    simulate_interrupt = FALSE) {

@@ -148,6 +148,34 @@ def validate_request(req, check_environment=True):
             problems.append(issue("input.target_structure", error, "input"))
         if not rows:
             problems.append(issue("input.target_empty", "Aligned target table contains no feature rows.", "input"))
+    cfg = req.get("approved_scientific_configuration", {})
+    try:
+        absolute_tolerance = float(cfg.get("absolute_tolerance"))
+        ppm_tolerance = float(cfg.get("ppm_tolerance"))
+    except (TypeError, ValueError):
+        absolute_tolerance = float("nan")
+        ppm_tolerance = float("nan")
+    tolerance_rule = cfg.get(
+        "tolerance_combination_rule",
+        "maximum_of_absolute_da_and_target_mz_times_ppm")
+    if not math.isfinite(ppm_tolerance) or not 0.1 <= ppm_tolerance <= 100:
+        problems.append(issue(
+            "scientific.ppm_tolerance",
+            "PPM tolerance must be between 0.1 and 100.",
+            "scientific"))
+    if not math.isfinite(absolute_tolerance) or not 0.000001 <= absolute_tolerance <= 1:
+        problems.append(issue(
+            "scientific.absolute_tolerance",
+            "Absolute m/z tolerance must be between 0.000001 and 1 Da.",
+            "scientific"))
+    if tolerance_rule not in (
+            "maximum_of_absolute_da_and_target_mz_times_ppm",
+            "minimum_of_absolute_da_and_target_mz_times_ppm"):
+        problems.append(issue(
+            "scientific.tolerance_rule",
+            "Unsupported mass-tolerance combination rule.",
+            "scientific"))
+
     registry = req.get("registered_inputs", {}).get("raw_file_hash_registry", {})
     registry_path = Path(registry.get("path", ""))
     if not registry_path.is_file() or sha(registry_path) != str(registry.get("sha256", "")).upper():
@@ -236,6 +264,7 @@ registered_sample_manifest <- data.frame(
 
 absolute_tolerance <- {cfg["absolute_tolerance"]}
 ppm_tolerance <- {cfg["ppm_tolerance"]}
+tolerance_combination_rule <- {rquote(cfg.get("tolerance_combination_rule", "maximum_of_absolute_da_and_target_mz_times_ppm"))}
 
 inclusive_detection_threshold <- {cfg["inclusive_detection_threshold"]}
 conservative_detection_threshold <- {cfg["conservative_detection_threshold"]}
@@ -311,6 +340,27 @@ primary_minimum_detected_pixels <- {int(cfg["primary_minimum_detected_pixels"])}
     generated = generated.replace("# SIX-SAMPLE COMBINATION AND QC OUTPUT", "# SAMPLE-SET COMBINATION AND QC OUTPUT")
     generated = generated.replace("run_six_sample_extraction", "run_sample_set_extraction")
     generated = generated.replace("six_sample_combined_feature_summary.csv", "sample_set_combined_feature_summary.csv")
+    tolerance_rule = cfg.get(
+        "tolerance_combination_rule",
+        "maximum_of_absolute_da_and_target_mz_times_ppm")
+    strict_rule = tolerance_rule ==         "minimum_of_absolute_da_and_target_mz_times_ppm"
+    if strict_rule:
+        old_window = (
+            "targets[, extraction_half_window := pmax(absolute_tolerance, "
+            "target_mz * ppm_tolerance / 1000000)]")
+        new_window = (
+            "targets[, extraction_half_window := pmin(absolute_tolerance, "
+            "target_mz * ppm_tolerance / 1000000)]")
+        if generated.count(old_window) != 1:
+            raise RuntimeError(
+                "Validated extraction-window calculation anchor was not unique.")
+        generated = generated.replace(old_window, new_window, 1)
+    config_anchor =         "    ppm_tolerance = as.character(ppm_tolerance),\n"
+    config_replacement = config_anchor +         "    tolerance_combination_rule = tolerance_combination_rule,\n"
+    if generated.count(config_anchor) != 1:
+        raise RuntimeError(
+            "Analysis-configuration tolerance anchor was not unique.")
+    generated = generated.replace(config_anchor, config_replacement, 1)
     workspace.mkdir(parents=True, exist_ok=False)
     path = workspace / "execution_copy_generic_script01.R"
     path.write_text(generated, encoding="utf-8", newline="\n")
@@ -319,9 +369,15 @@ primary_minimum_detected_pixels <- {int(cfg["primary_minimum_detected_pixels"])}
         "configuration_boundary": "request-driven",
         "input_discovery": "explicit registered sample manifest",
         "sample_count": len(samples), "target_count": len(target_rows),
-        "calculation_sections_changed": False,
+        "mass_tolerance": {
+            "ppm": cfg["ppm_tolerance"],
+            "absolute_da": cfg["absolute_tolerance"],
+            "rule": tolerance_rule
+        },
+        "calculation_sections_changed": strict_rule,
         "generic_boundary_changes": ["dynamic exposure label", "dynamic sample count",
-            "explicit registered imzML/IBD manifest", "generic output naming"]
+            "explicit registered imzML/IBD manifest", "generic output naming"] +
+            (["strict smaller-of ppm/Da extraction window"] if strict_rule else [])
     }
     (workspace / "configuration_transformations.json").write_text(json.dumps(transformations, indent=2), encoding="utf-8")
     return path, transformations, len(target_rows)

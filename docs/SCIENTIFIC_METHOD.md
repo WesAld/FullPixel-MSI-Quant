@@ -13,12 +13,22 @@ quantification.
 
 For each target m/z and valid pixel:
 
-- the extraction half-window is the larger of 0.002 Da and 10 ppm of the target
-  m/z;
-- the nearest centroid inside the tolerance is selected;
+- under the validated v1.0.0 setting, the extraction half-window is the larger
+  of 0.002 Da and 10 ppm of the target m/z;
+- under a custom strict combined setting, the user enters both a ppm tolerance
+  and an absolute Da half-window, and the extraction half-window is the smaller
+  of the two for that target m/z;
+- the nearest centroid inside the resulting tolerance is selected;
 - greater intensity resolves equal mass-error ties;
 - a missing centroid remains missing or undetected according to the registered
   output field; it is not imputed.
+
+Custom ppm values must be between 0.1 and 100. Custom absolute half-windows
+must be between 0.000001 and 1 Da. Both values and the combination rule are
+recorded in the execution request and analysis configuration. Custom strict
+runs are classified as **Technical Validation Candidates**. The four frozen
+scientific source files remain byte-identical; the strict rule is applied only
+in the generated execution copy.
 
 ## Spectrum-sum normalization
 

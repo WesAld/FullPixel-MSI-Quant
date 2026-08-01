@@ -829,7 +829,7 @@ fpq_prepare_mode_extraction_request <- function(
     comparisons = request$comparisons,
     sample_mappings = request$internal_role_mappings
   )
-  request
+  fpq_apply_mass_tolerance_to_request(request, config)
 }
 
 fpq_prepare_full_workflow <- function(
