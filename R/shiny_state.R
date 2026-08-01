@@ -8,7 +8,8 @@ fpq_new_app_state <- function(repository_root) {
     project = shiny::reactiveVal(NULL),
     configuration = shiny::reactiveVal(list(conditions = list(), samples = list(),
                                              comparisons = list(), ion_mode = "NEG",
-                                             exposure_label = "Single")),
+                                             exposure_label = "Single",
+                                             mass_tolerance = fpq_default_mass_tolerance())),
     dirty = shiny::reactiveVal(FALSE),
     validations = shiny::reactiveVal(list()),
     annotation_mapping_validation = shiny::reactiveVal(list(
@@ -46,7 +47,8 @@ fpq_load_project_configuration <- function(project) {
       expected_coordinate_count =
         preferences$expected_coordinate_count %||% 1600,
       positive_matrix = preferences$positive_matrix %||% "DHB",
-      negative_matrix = preferences$negative_matrix %||% "9AA"))
+      negative_matrix = preferences$negative_matrix %||% "9AA",
+      mass_tolerance = fpq_default_mass_tolerance()))
   }
   configurations <- lapply(files, fpq_read_json)
   sample_counts <- vapply(configurations,
@@ -69,6 +71,8 @@ fpq_load_project_configuration <- function(project) {
     preferences$positive_matrix %||% "DHB"
   resolved$negative_matrix <- resolved$negative_matrix %||%
     preferences$negative_matrix %||% "9AA"
+  resolved$mass_tolerance <- resolved$mass_tolerance %||%
+    fpq_default_mass_tolerance()
   resolved
 }
 

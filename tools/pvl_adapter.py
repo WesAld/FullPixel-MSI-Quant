@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Execution boundary for the frozen PVL Script 01 reference workflow."""
-import argparse, csv, difflib, hashlib, json, os, subprocess, sys
+import argparse, csv, difflib, hashlib, json, math, os, subprocess, sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,6 +42,22 @@ def validate_request(req, check_environment=True):
             if not p or not Path(p).is_file(): problems.append(issue(f"input.missing_{role}",f"Missing {role} for {x.get('sample_id')}: {p}"))
         if x.get("imzml_path") and x.get("ibd_path") and Path(x["imzml_path"]).stem.lower()!=Path(x["ibd_path"]).stem.lower():
             problems.append(issue("input.pair_mismatch",f"imzML/IBD stems differ for {x.get('sample_id')}."))
+    cfg=req.get("approved_scientific_configuration",{})
+    try:
+        abs_tol=float(cfg.get("absolute_tolerance"))
+        ppm_tol=float(cfg.get("ppm_tolerance"))
+    except (TypeError,ValueError):
+        abs_tol=float("nan"); ppm_tol=float("nan")
+    tolerance_rule=cfg.get(
+        "tolerance_combination_rule",
+        "maximum_of_absolute_da_and_target_mz_times_ppm")
+    if (not math.isfinite(abs_tol) or not math.isfinite(ppm_tol) or
+        abs(abs_tol-0.002)>1e-15 or abs(ppm_tol-10)>1e-12 or
+        tolerance_rule!="maximum_of_absolute_da_and_target_mz_times_ppm"):
+        problems.append(issue(
+            "profile.mass_tolerance",
+            "The PVL reference adapter requires the validated max(10 ppm, 0.002 Da) tolerance.",
+            "scientific"))
     acq=req.get("acquisition_metadata",{})
     expected_matrix="DHB" if req.get("ion_mode")=="POS" else "9AA"
     if acq!={"matrix":expected_matrix,"pixel_size_um":40,"full_pixel":True}: problems.append(issue("profile.acquisition",f"PVL {req.get('ion_mode')} technical profile requires {expected_matrix}, 40 um, full-pixel acquisition.","scientific"))

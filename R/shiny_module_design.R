@@ -3,6 +3,45 @@ fpq_design_ui <- function(id) {
   shiny::tagList(
     htmltools::tags$h2("Conditions, Treatments, Replicates and Comparisons"),
     shiny::uiOutput(ns("demo_warning")),
+    htmltools::tags$h3("Extraction mass tolerance"),
+    shiny::wellPanel(
+      shiny::radioButtons(
+        ns("mass_tolerance_mode"),
+        "Tolerance setting",
+        choices = c(
+          "Validated v1.0.0 default: wider of 10 ppm and 0.002 Da" =
+            "validated_default",
+          "Custom strict combined: use the smaller ppm/Da window" =
+            "custom_strict_combined"
+        ),
+        selected = "validated_default"
+      ),
+      shiny::numericInput(
+        ns("custom_ppm_tolerance"),
+        "PPM tolerance",
+        value = 10,
+        min = 0.1,
+        max = 100,
+        step = 0.1
+      ),
+      shiny::numericInput(
+        ns("custom_absolute_da_tolerance"),
+        "Absolute m/z tolerance (Da, ± half-window)",
+        value = 0.002,
+        min = 0.000001,
+        max = 1,
+        step = 0.0001
+      ),
+      shiny::helpText(
+        "Custom strict mode converts the ppm value to Da for every target m/z and uses the smaller of that value and the entered absolute Da half-window. Custom settings are Technical Validation Candidate settings."
+      ),
+      shiny::actionButton(
+        ns("apply_mass_tolerance"),
+        "Apply Mass Tolerance",
+        class = "btn-primary"
+      ),
+      shiny::uiOutput(ns("mass_tolerance_status"))
+    ),
     shiny::fluidRow(
       shiny::column(4, shiny::selectInput(ns("condition"), "Selected condition", choices = NULL)),
       shiny::column(8,
@@ -47,6 +86,73 @@ fpq_design_ui <- function(id) {
 
 fpq_design_server <- function(id, state) {
   shiny::moduleServer(id, function(input, output, session) {
+    shiny::observe({
+      settings <- fpq_mass_tolerance_settings(state$configuration())
+      shiny::updateRadioButtons(
+        session,
+        "mass_tolerance_mode",
+        selected = settings$mode
+      )
+      shiny::updateNumericInput(
+        session,
+        "custom_ppm_tolerance",
+        value = settings$ppm
+      )
+      shiny::updateNumericInput(
+        session,
+        "custom_absolute_da_tolerance",
+        value = settings$absolute_da
+      )
+    })
+
+    output$mass_tolerance_status <- shiny::renderUI({
+      settings <- fpq_mass_tolerance_settings(state$configuration())
+      status <- if (isTRUE(settings$validated_default))
+        "Validated default" else "Technical Validation Candidate override"
+      rule_label <- if (identical(
+        settings$rule,
+        "minimum_of_absolute_da_and_target_mz_times_ppm"
+      )) "min" else "max"
+      htmltools::tags$p(
+        htmltools::tags$strong(paste0(status, ": ")),
+        paste0(
+          "effective half-window = ", rule_label, "(",
+          format(settings$ppm, trim = TRUE),
+          " ppm, ",
+          format(settings$absolute_da, trim = TRUE, scientific = FALSE),
+          " Da)."
+        )
+      )
+    })
+
+    shiny::observeEvent(input$apply_mass_tolerance, {
+      tryCatch({
+        config <- fpq_set_mass_tolerance(
+          state$configuration(),
+          input$mass_tolerance_mode,
+          input$custom_ppm_tolerance,
+          input$custom_absolute_da_tolerance
+        )
+        state$configuration(config)
+        state$dirty(TRUE)
+        settings <- fpq_mass_tolerance_settings(config)
+        shiny::showNotification(
+          paste0(
+            "Mass tolerance applied: ",
+            format(settings$ppm, trim = TRUE),
+            " ppm and ",
+            format(settings$absolute_da, trim = TRUE, scientific = FALSE),
+            " Da using the ",
+            if (identical(settings$rule,
+              "minimum_of_absolute_da_and_target_mz_times_ppm"))
+              "smaller" else "larger",
+            " window. Save Configuration to persist it."
+          ),
+          type = "message"
+        )
+      }, error = function(e) state$last_error(e))
+    })
+
     refresh_choices <- function() {
       config <- state$configuration()
       choices <- setNames(vapply(config$conditions %||% list(),

@@ -84,6 +84,16 @@ The principal validation environment was:
 Python adapters require pandas and openpyxl. The release uses version ranges
 rather than claiming one fully locked clean-room environment.
 
+## Configurable mass-tolerance status
+
+The validated v1.0.0 extraction default remains the larger of 10 ppm and
+0.002 Da. A custom strict combined control is available for technical
+evaluation. It accepts both ppm and absolute Da half-window values and uses the
+smaller result for each target m/z. Custom strict runs are explicitly
+classified as Technical Validation Candidates and require dataset-specific
+review. The frozen scientific source hashes are unchanged; the strict rule is
+applied only to the generated execution copy.
+
 ## Remaining limitations
 
 - No independent cross-software quantitative oracle.

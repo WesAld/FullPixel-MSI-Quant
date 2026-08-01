@@ -119,12 +119,14 @@ fpq_validate_profile_compatibility <- function(config, profile_id) {
   if (!isTRUE(design$valid))
     return(fail("profile.generic_design", design$message))
 
+  tolerance <- fpq_mass_tolerance_settings(config)
   exact_pvl <- profile_id %in% c("pvl-fullpixel-reference-v1",
                                  "fullpixel-40um-1600px-v1") &&
     identical(config$exposure_label %||% config$exposure %||% "Single", "Single") &&
     identical(design$modes, "NEG") &&
     identical(design$branches$NEG$reference_replicates, 3L) &&
-    identical(design$branches$NEG$comparison_replicates, 3L)
+    identical(design$branches$NEG$comparison_replicates, 3L) &&
+    isTRUE(tolerance$validated_default)
 
   list(
     classification = if (exact_pvl) "profile_compatible" else
@@ -135,6 +137,13 @@ fpq_validate_profile_compatibility <- function(config, profile_id) {
       acknowledgement_required = !exact_pvl,
       message = if (exact_pvl)
         "Configuration matches the approved PVL Single-Negative reference boundary."
+      else if (!isTRUE(tolerance$validated_default))
+        paste0(
+          "A custom strict mass tolerance is configured: ",
+          format(tolerance$ppm, trim = TRUE), " ppm and ",
+          format(tolerance$absolute_da, trim = TRUE, scientific = FALSE),
+          " Da, using the smaller window; execution remains a Technical Validation Candidate."
+        )
       else
         "Generic two-group execution is technically validated and remains a Technical Validation Candidate."
     ),
@@ -143,6 +152,13 @@ fpq_validate_profile_compatibility <- function(config, profile_id) {
       if (exact_pvl) "PASS" else "WARNING",
       if (exact_pvl)
         "Configuration matches the approved PVL execution design."
+      else if (!isTRUE(tolerance$validated_default))
+        paste0(
+          "Custom strict mass tolerance accepted for candidate execution: ",
+          format(tolerance$ppm, trim = TRUE), " ppm and ",
+          format(tolerance$absolute_da, trim = TRUE, scientific = FALSE),
+          " Da; the smaller half-window is used."
+        )
       else
         paste("Generic two-group design accepted:",
               paste(design$modes, collapse = "+"),

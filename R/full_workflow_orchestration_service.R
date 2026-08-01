@@ -189,6 +189,28 @@ fpq_mode_acquisition_metadata <- function(project, config, mode) {
        expected_coordinate_count = coordinates)
 }
 
+fpq_apply_mass_tolerance_to_request <- function(request, config) {
+  settings <- fpq_mass_tolerance_settings(config)
+  request$approved_scientific_configuration$absolute_tolerance <-
+    settings$absolute_da
+  request$approved_scientific_configuration$ppm_tolerance <- settings$ppm
+  request$approved_scientific_configuration$tolerance_combination_rule <-
+    settings$rule
+  request$display_metadata <- request$display_metadata %||% list()
+  request$display_metadata$mass_tolerance <- list(
+    mode = settings$mode,
+    ppm = settings$ppm,
+    absolute_da = settings$absolute_da,
+    rule = settings$rule,
+    validation_classification = if (isTRUE(settings$validated_default))
+      "validated_default" else "technical_validation_candidate"
+  )
+  if (!isTRUE(settings$validated_default))
+    request$scientific_profile$reference_status <-
+      "technical_validation_candidate"
+  request
+}
+
 fpq_prepare_mode_extraction_request <- function(
     project, config, mode, workflow_id,
     repository_root = fpq_repo_root(), hash_raw_inputs = TRUE) {
@@ -201,11 +223,26 @@ fpq_prepare_mode_extraction_request <- function(
   token <- paste(workflow_id, tolower(mode), sep = "-")
   request <- fpq_read_json(file.path(repository_root, "config", "examples",
     "pvl_single_negative_extraction.execution_request.json"))
+  rscript_path <- file.path(R.home("bin"), "Rscript.exe")
+  if (!file.exists(rscript_path))
+    fpq_stop(
+      "workflow.rscript_missing",
+      paste("Rscript.exe was not found at", rscript_path),
+      "environment"
+    )
+  request$environment_requirements$r_executable <-
+    normalizePath(
+      rscript_path,
+      winslash = "/",
+      mustWork = TRUE
+    )
+
   exposure <- fpq_project_exposure_label(project, config)
+  tolerance <- fpq_mass_tolerance_settings(config)
   exact_pvl <- project$manifest$scientific_profile_id %in%
       c("pvl-fullpixel-reference-v1", "fullpixel-40um-1600px-v1") &&
     identical(exposure, "Single") && identical(mode, "NEG") &&
-    length(samples) == 6L
+    length(samples) == 6L && isTRUE(tolerance$validated_default)
   acquisition <- fpq_mode_acquisition_metadata(project, config, mode)
 
   request$request_id <- paste0("req-", token, "-extract")
@@ -270,7 +307,7 @@ fpq_prepare_mode_extraction_request <- function(
     reference_condition = request$conditions[[1]]$display_label,
     comparison_condition = request$conditions[[2]]$display_label,
     sample_mappings = request$internal_role_mappings)
-  request
+  fpq_apply_mass_tolerance_to_request(request, config)
 }
 
 fpq_request_path <- function(project, workflow_id, request) {

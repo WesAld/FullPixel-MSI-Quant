@@ -327,7 +327,7 @@ fpq_prepare_mode_extraction_request <- function(
     dataset_prefix = fpq_generic_token(project$manifest$project_name, "Project"),
     exposure_label = exposure, analysis_type = "quantify_only",
     sample_mappings = request$internal_role_mappings)
-  request
+  fpq_apply_mass_tolerance_to_request(request, config)
 }
 
 fpq_prepare_full_workflow <- function(project, config, validations,

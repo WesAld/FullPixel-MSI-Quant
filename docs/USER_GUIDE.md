@@ -49,7 +49,24 @@ final outputs.
 - replicate counts may differ;
 - every non-reference group is compared with the same reference.
 
-## 3. Register MSI samples
+## 3. Select the extraction mass tolerance
+
+Open **Dataset Configuration** and use **Extraction mass tolerance**.
+
+- **Validated v1.0.0 default** uses `max(10 ppm, 0.002 Da)`.
+- **Custom strict combined** accepts both a ppm value and an absolute m/z
+  tolerance expressed as a `±` Da half-window. For every target m/z, the ppm
+  value is converted to Da and the smaller of the ppm-derived and absolute Da
+  half-windows is used.
+
+For example, with 10 ppm and 0.002 Da, the effective half-window is 0.001 Da
+at m/z 100 and 0.002 Da at m/z 500.
+
+Click **Apply Mass Tolerance**, then click **Save Configuration**. Custom strict
+settings are retained as Technical Validation Candidate settings and must be
+assessed for suitability for the acquisition platform and dataset.
+
+## 4. Register MSI samples
 
 For every sample and ion mode, register:
 
@@ -67,7 +84,7 @@ unique. The actual imzML coordinate count must match the declared count.
 Do not rename or move registered inputs during an active workflow. A changed
 path or hash can invalidate dependent artifacts.
 
-## 4. Register the aligned MZmine table
+## 5. Register the aligned MZmine table
 
 The aligned feature table supplies extraction targets, not quantitative
 intensities.
@@ -80,7 +97,7 @@ Map at least:
 Column names do not need to follow one fixed naming convention because the
 mapping is explicit. Review the preview before confirming.
 
-## 5. Register the annotated MZmine table
+## 6. Register the annotated MZmine table
 
 The annotated table is optional until annotation integration. Map the available
 annotation fields, including compound name, formula, adduct, score, compound
@@ -89,7 +106,7 @@ score, and database where present.
 Annotations remain putative. Quantitative values must be preserved exactly
 during the merge.
 
-## 6. Review validation
+## 7. Review validation
 
 Before execution, review:
 
@@ -104,7 +121,7 @@ Before execution, review:
 A critical failure blocks execution. Warnings remain visible in the project
 record and output workbook.
 
-## 7. Run the workflow
+## 8. Run the workflow
 
 The workflow stages are:
 
@@ -123,7 +140,7 @@ After correcting the reported cause, use **Resume Failed Run**. Valid completed
 checkpoints are reused. The application creates a new retry workspace for the
 failed stage and retains the previous failed attempt for provenance.
 
-## 8. Download results
+## 9. Download results
 
 Open **Results** after the workflow completes.
 
@@ -133,7 +150,7 @@ Open **Results** after the workflow completes.
 The download is validated against the project analysis type and expected sheet
 contract before it is offered.
 
-## 9. Interpret the results
+## 10. Interpret the results
 
 The workbooks contain descriptive quantitative readouts. They do not contain
 p-values or statistical-significance claims.
@@ -145,7 +162,7 @@ p-values or statistical-significance claims.
 - Detection change is a difference in conservative detection fraction.
 - Annotation identities are putative accurate-mass matches.
 
-## 10. Project safety
+## 11. Project safety
 
 - Keep raw data outside the software repository.
 - Back up the project folder before manual filesystem changes.

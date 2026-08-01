@@ -46,6 +46,12 @@ The workflow uses no pseudocount, no imputation, no pairing, and no p-values.
 Missing values remain missing. See
 [`docs/SCIENTIFIC_METHOD.md`](docs/SCIENTIFIC_METHOD.md).
 
+The validated v1.0.0 mass-tolerance default is `max(10 ppm, 0.002 Da)`. The
+Dataset Configuration page also provides a custom strict combined setting in
+which the user enters both ppm and an absolute Da half-window. For each target
+m/z, the application uses the smaller of the two resulting windows. Custom
+settings are recorded as Technical Validation Candidate overrides.
+
 ## Required inputs
 
 For each selected ion mode:

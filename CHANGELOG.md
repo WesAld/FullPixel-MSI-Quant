@@ -2,6 +2,22 @@
 
 All notable changes to FullPixel MSI Quant are documented here.
 
+## [Unreleased]
+
+### Added
+
+- GUI control for selecting either the validated v1.0.0 tolerance or a custom
+  strict combined ppm/Da tolerance.
+- Custom strict mode accepts both a ppm value and an absolute Da half-window and
+  uses whichever produces the narrower window for each target m/z.
+- Configuration validation, execution-request propagation, provenance display,
+  and focused automated tests for combined mass tolerances.
+
+### Validation status
+
+- Custom strict combined settings are classified as Technical Validation Candidate
+  overrides. The four frozen scientific scripts remain unchanged.
+
 ## [1.0.0] - 2026-08-01
 
 ### Added
