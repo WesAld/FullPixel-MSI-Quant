@@ -19,6 +19,6 @@ if ($null -eq $Rscript) {
 
 $env:FULLPIXEL_MSI_QUANT_ROOT = $RepositoryRoot
 
-Write-Host "Launching FullPixel MSI Quant 1.0.0 on port $Port..." -ForegroundColor Cyan
+Write-Host "Launching FullPixel MSI Quant 1.1.0 on port $Port..." -ForegroundColor Cyan
 & $Rscript.Source (Join-Path $RepositoryRoot "tools\launch_app.R") "--port=$Port"
 exit $LASTEXITCODE

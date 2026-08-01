@@ -4,6 +4,8 @@ All notable changes to FullPixel MSI Quant are documented here.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-01
+
 ### Added
 
 - GUI control for selecting either the validated v1.0.0 tolerance or a custom
@@ -13,10 +15,21 @@ All notable changes to FullPixel MSI Quant are documented here.
 - Configuration validation, execution-request propagation, provenance display,
   and focused automated tests for combined mass tolerances.
 
-### Validation status
+### Fixed
 
-- Custom strict combined settings are classified as Technical Validation Candidate
-  overrides. The four frozen scientific scripts remain unchanged.
+- Interactive mass-tolerance settings are saved from the GUI and persist in the
+  project configuration.
+- Windows workflow requests resolve and record the concrete `Rscript.exe` path
+  before adapter execution.
+
+### Validation
+
+- End-to-end custom strict workflows completed with external PVL positive- and
+  negative-mode data using 5 ppm and an absolute half-window of 0.0015 Da.
+- Request metadata and executed extraction copies confirmed the strict
+  `pmin()` extraction rule.
+- Custom strict combined settings remain classified as Technical Validation
+  Candidate overrides. The four frozen scientific scripts remain unchanged.
 
 ## [1.0.0] - 2026-08-01
 
@@ -50,4 +63,6 @@ All notable changes to FullPixel MSI Quant are documented here.
 - Release remains classified as a Technical Validation Candidate because an
   independent scientific reference oracle has not been established.
 
+[Unreleased]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/WesAld/FullPixel-MSI-Quant/releases/tag/v1.0.0
