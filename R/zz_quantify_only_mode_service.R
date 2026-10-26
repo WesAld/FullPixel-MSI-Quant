@@ -322,11 +322,21 @@ fpq_prepare_mode_extraction_request <- function(
                                                  "full_pixel")]
   request$pixel_metadata$expected_coordinate_count <-
     acquisition$expected_coordinate_count
+  request$pixel_metadata$pixel_geometry_policy <-
+    acquisition$pixel_geometry_policy
   request$display_metadata <- list(
     project_name = project$manifest$project_name,
     dataset_prefix = fpq_generic_token(project$manifest$project_name, "Project"),
     exposure_label = exposure, analysis_type = "quantify_only",
     sample_mappings = request$internal_role_mappings)
+  request$primary_normalization_method <- fpq_normalization_method(config)
+  request$approved_scientific_configuration$primary_normalization_method <-
+    request$primary_normalization_method
+  request$display_metadata$normalization <- list(
+    application_version = "2.0.0-dev",
+    primary_normalization_method = request$primary_normalization_method,
+    normalization_scale = request$approved_scientific_configuration$normalization_scale,
+    normalization_definition_version = fpq_normalization_definition_version())
   fpq_apply_mass_tolerance_to_request(request, config)
 }
 

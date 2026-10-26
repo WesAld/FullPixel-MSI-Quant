@@ -13,6 +13,7 @@ import hashlib
 import json
 import math
 import re
+import sys
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -20,6 +21,8 @@ import pandas as pd
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from normalization_routing import provenance, resolve_method
 
 SHEETS = [
     "Mean_Log2FC",
@@ -605,6 +608,7 @@ def build_workbook_tables(
     metadata_columns: list[str],
     comparisons: list[dict],
     columns: dict[str, list[str]],
+    method: str = "spectrum_sum",
 ) -> tuple[dict[str, pd.DataFrame], list[dict]]:
     annotated = master[
         master["annotation_status"].eq("Annotated")
@@ -693,14 +697,19 @@ def build_workbook_tables(
     )
     all_features = master[all_features_source].copy()
     all_features_rename: dict[str, str] = {}
+    intensity_token = "TIC" if method == "spectrum_sum" else method.upper()
+    intensity_suffix = (
+        f"_{intensity_token}_intensity" if method == "raw"
+        else f"_{intensity_token}_normalized_intensity"
+    )
     for column in columns["overall_samples"]:
         all_features_rename[column] = (
             column.removesuffix("_overall_normalized_signal")
-            + "_TIC_normalized_intensity"
+            + intensity_suffix
         )
     for group, column in zip(columns["groups"], columns["overall_means"]):
         all_features_rename[column] = (
-            f"mean_{group}_TIC_normalized_intensity"
+            f"mean_{group}{intensity_suffix}"
         )
     for index, comparison in enumerate(comparisons):
         all_features_rename[columns["overall_fold"][index]] = (
@@ -713,11 +722,13 @@ def build_workbook_tables(
         )
     all_features.rename(columns=all_features_rename, inplace=True)
 
+    intensity_sheet = "TIC_normalized_intensity" if method == "spectrum_sum" else f"Primary_{method.upper()}_Intensity"
+    all_features_sheet = "All_Features_TIC_Normalized" if method == "spectrum_sum" else f"All_Features_{method.upper()}"
     return {
         "Mean_Log2FC": overall,
         "All_Pixels": all_pixels,
-        "TIC_normalized_intensity": local,
-        "All_Features_TIC_Normalized": all_features,
+        intensity_sheet: local,
+        all_features_sheet: all_features,
     }, []
 
 
@@ -742,6 +753,11 @@ def main() -> int:
                 "Expected compare_multiple_groups analysis type."
             )
 
+        method = resolve_method(request)
+        normalization = provenance(method, request.get("display_metadata", {}).get("normalization", {}).get("normalization_scale", 1000000))
+        intensity_sheet = "TIC_normalized_intensity" if method == "spectrum_sum" else f"Primary_{method.upper()}_Intensity"
+        all_features_sheet = "All_Features_TIC_Normalized" if method == "spectrum_sum" else f"All_Features_{method.upper()}"
+        sheets = ["Mean_Log2FC", "All_Pixels", intensity_sheet, all_features_sheet, "QC", "README"]
         master, masters, source_rows = read_masters(request)
         master, metadata_columns = prepare_metadata(master)
         display_metadata = request.get("display_metadata", {})
@@ -755,12 +771,14 @@ def main() -> int:
             master,
             comparisons,
             columns,
+            method,
         )
         tables, _ = build_workbook_tables(
             master,
             metadata_columns,
             comparisons,
             columns,
+            method,
         )
 
         annotation_status = master["annotation_status"]
@@ -810,7 +828,7 @@ def main() -> int:
             [
                 "all_features_retained",
                 "PASS",
-                len(tables["All_Features_TIC_Normalized"]),
+                len(tables[all_features_sheet]),
                 source_rows,
             ],
             [
@@ -867,6 +885,9 @@ def main() -> int:
                 "Comparisons",
                 "Ion modes",
                 "Replicates per condition",
+                "Application version",
+                "Primary normalization method",
+                "Normalization definition version",
                 "Normalization",
                 "Detection threshold",
                 "Statistical interpretation",
@@ -886,7 +907,10 @@ def main() -> int:
                     f"{label}={count}"
                     for label, count in replicate_counts.items()
                 ),
-                "Spectrum-sum normalization; scale 1,000,000",
+                "2.0.0-dev",
+                method,
+                normalization["normalization_definition_version"],
+                normalization["normalization_definition"],
                 (
                     "Conservative raw intensity >= 1000; "
                     "minimum 10 pixels"
@@ -933,7 +957,7 @@ def main() -> int:
 
         workbook = Workbook()
         workbook.remove(workbook.active)
-        for sheet in SHEETS:
+        for sheet in sheets:
             worksheet = workbook.create_sheet(sheet)
             write_frame(worksheet, tables[sheet])
         workbook.calculation.fullCalcOnLoad = True
@@ -952,12 +976,12 @@ def main() -> int:
             for worksheet in checked.worksheets
         }
         checked.close()
-        if checked_sheets != SHEETS:
+        if checked_sheets != sheets:
             raise RuntimeError("Final workbook sheet contract failed.")
         if any(
             sheet_rows.get(sheet, 0) < 1
             for sheet in (
-                "All_Features_TIC_Normalized",
+                all_features_sheet,
                 "QC",
                 "README",
             )
@@ -965,7 +989,7 @@ def main() -> int:
             raise RuntimeError(
                 "Final workbook is missing required all-feature or audit rows."
             )
-        if sheet_rows["All_Features_TIC_Normalized"] != source_rows:
+        if sheet_rows[all_features_sheet] != source_rows:
             raise RuntimeError(
                 "All_Features_TIC_Normalized row retention failed."
             )
@@ -997,11 +1021,12 @@ def main() -> int:
             },
             workbook_contract={
                 "status": "PASS",
-                "sheet_names": SHEETS,
+                "sheet_names": sheets,
                 "all_features_retained": True,
                 "annotation_scores_retained": True,
                 "inferential_statistics": False,
             },
+            normalization=normalization,
         )
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(

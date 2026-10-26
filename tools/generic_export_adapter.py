@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Create a dynamic five-sheet Generic FullPixel MSI Quant workbook."""
 from __future__ import annotations
-import argparse, hashlib, json, math, re
+import argparse, hashlib, json, math, re, sys
 from pathlib import Path
 import pandas as pd
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from normalization_routing import provenance, resolve_method
 
 
 def sha(path:Path)->str:
@@ -54,6 +56,8 @@ def main():
  req=json.loads(Path(a.request).read_text(encoding='utf-8')); rp=Path(a.report)
  report={'schema_version':'1.0.0','workflow_id':req.get('workflow_id'),'status':'FAIL'}
  try:
+  method=resolve_method(req)
+  normalization=provenance(method,req.get('display_metadata',{}).get('normalization',{}).get('normalization_scale',1000000))
   masters=req.get('masters',[])
   if not masters: raise RuntimeError('At least one validated annotated master is required.')
   frames=[]; source_rows=0
@@ -111,6 +115,7 @@ def main():
    for suffix in ['overall_normalized_signal','local_strong_pixel_intensity','conservative_detection_fraction','conservative_detected_pixel_count']:
     rename[internal+'_'+suffix]=display+'_'+suffix
   overall=master[meta+overall_ctrl+overall_trt+['log2FC_overall_TRT_vs_CTRL','overall_direction','preliminary_quantitative_candidate']].copy()
+  overall.insert(len(meta),'primary_normalization_method',method)
   overall.rename(columns=rename,inplace=True)
   overall.rename(columns={'log2FC_overall_TRT_vs_CTRL':f'log2FC_{safe(cmp_label)}_vs_{safe(ref_label)}'},inplace=True)
   all_pixels=master[meta+frac_ctrl+frac_trt+count_cols+['detection_fraction_difference_TRT_minus_CTRL']].copy()
@@ -119,6 +124,7 @@ def main():
   all_pixels.rename(columns=rename,inplace=True)
   all_pixels.rename(columns={'detection_fraction_difference_TRT_minus_CTRL':f'ion_positive_pixel_change_{safe(cmp_label)}_minus_{safe(ref_label)}_pp'},inplace=True)
   local=master[meta+local_ctrl+local_trt+['local_intensity_log2FC_TRT_vs_CTRL']].copy(); local.rename(columns=rename,inplace=True)
+  local.insert(len(meta),'primary_normalization_method',method)
   local.rename(columns={'local_intensity_log2FC_TRT_vs_CTRL':f'local_intensity_log2FC_{safe(cmp_label)}_vs_{safe(ref_label)}'},inplace=True)
   qc=pd.DataFrame([
    ['source_rows_retained','PASS',len(master),source_rows],
@@ -128,24 +134,25 @@ def main():
    ['two_group_replicate_mapping','PASS',f'{len(ctrl)} + {len(trt)}','equal and >=2'],
    ['technical_validation_classification','WARNING','Technical Validation Candidate','dataset-specific oracle not supplied']
   ],columns=['check','status','observed','expected'])
-  readme=pd.DataFrame({'Field':['Project','Exposure','Reference condition','Comparison condition','Ion modes','Replicates per condition','Normalization','Detection threshold','Statistical interpretation','Validation status'],
-   'Value':[req['display_metadata'].get('project_name'),req.get('exposure_label'),ref_label,cmp_label,', '.join(x['ion_mode'] for x in masters),len(ctrl),
-   'Spectrum-sum normalization; scale 1,000,000','Conservative raw intensity >= 1000; minimum 10 pixels','Descriptive two-group readouts; no p-values, pairing, pseudocount, or imputation','Technical Validation Candidate']})
+  readme=pd.DataFrame({'Field':['Application version','Project','Exposure','Reference condition','Comparison condition','Ion modes','Replicates per condition','Primary normalization method','Normalization definition version','Normalization','Detection threshold','Statistical interpretation','Validation status'],
+   'Value':['2.0.0-dev',req['display_metadata'].get('project_name'),req.get('exposure_label'),ref_label,cmp_label,', '.join(x['ion_mode'] for x in masters),len(ctrl),method,normalization['normalization_definition_version'],
+   normalization['normalization_definition'],'Conservative raw intensity >= 1000; minimum 10 pixels','Descriptive two-group readouts; no p-values, pairing, pseudocount, or imputation','Technical Validation Candidate']})
   outdir=Path(req['output_working_directory']); outdir.mkdir(parents=True,exist_ok=False)
   filename=f"{safe(req['display_metadata'].get('project_name'))}_{safe(req.get('exposure_label'))}_MALDI_MSI_Final_Results_TECHNICAL_VALIDATION_CANDIDATE.xlsx"
   path=outdir/filename
   wb=Workbook(); wb.remove(wb.active)
-  for name,df in [('Mean_Log2FC',overall),('All_Pixels',all_pixels),('TIC_normalized_intensity',local),('QC',qc),('README',readme)]:
+  intensity_sheet='TIC_normalized_intensity' if method=='spectrum_sum' else f'Primary_{method.upper()}_Intensity'
+  for name,df in [('Mean_Log2FC',overall),('All_Pixels',all_pixels),(intensity_sheet,local),('QC',qc),('README',readme)]:
    ws=wb.create_sheet(name); write_df(ws,df)
   wb.calculation.fullCalcOnLoad=True; wb.calculation.forceFullCalc=True; wb.calculation.calcMode='auto'
   wb.save(path)
   # Re-open validation.
   checked=load_workbook(path,read_only=True,data_only=False)
   sheet_rows={ws.title:ws.max_row-1 for ws in checked.worksheets}; checked.close()
-  if any(sheet_rows.get(x,0)<1 for x in ['Mean_Log2FC','All_Pixels','TIC_normalized_intensity','QC','README']):
+  if any(sheet_rows.get(x,0)<1 for x in ['Mean_Log2FC','All_Pixels',intensity_sheet,'QC','README']):
    raise RuntimeError('Final workbook sheet validation failed.')
   report.update(status='PASS',final_workbook={'path':str(path),'sha256':sha(path),'bytes':path.stat().st_size},
-                source_rows=source_rows,sheet_rows=sheet_rows,numerical_audit={'overall_max_abs':d1,'local_max_abs':d2,'detection_max_abs':d3})
+                source_rows=source_rows,sheet_rows=sheet_rows,normalization=normalization,numerical_audit={'overall_max_abs':d1,'local_max_abs':d2,'detection_max_abs':d3})
   rp.parent.mkdir(parents=True,exist_ok=True); rp.write_text(json.dumps(report,indent=2),encoding='utf-8'); return 0
  except Exception as exc:
   report.update(status='FAIL',error=str(exc),recommended_correction='Inspect the preserved generic export request and source masters.')

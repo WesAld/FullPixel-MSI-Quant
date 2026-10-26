@@ -10,9 +10,18 @@ fpq_project_ui <- function(id) {
         shiny::actionButton(ns("browse_location"), "Browse"),
         shiny::textInput(ns("investigator"), "Investigator or laboratory metadata"),
         shiny::textInput(ns("exposure"), "Exposure or acquisition label", value = "Single"),
+        shiny::radioButtons(ns("pixel_geometry_policy"), "Pixel geometry policy",
+          c("Strict predefined pixel count" = "strict_predefined",
+            "Unequal / sparse pixel area" = "sparse_observed"),
+          selected = "strict_predefined"),
+        htmltools::tags$p(class = "help-block",
+          "Unequal / sparse pixel area is a Technical Validation Candidate. It uses only stored coordinates and spectra; it does not impute, pad, or create zero-valued pixels."),
         shiny::fluidRow(
           shiny::column(3, shiny::numericInput(ns("pixel_size_um"), "Pixel size (um)", 40, min = 0.001)),
-          shiny::column(3, shiny::numericInput(ns("coordinate_count"), "Expected pixels per sample", 1600, min = 1, step = 1)),
+          shiny::column(3, shiny::conditionalPanel(
+            "input.pixel_geometry_policy == 'strict_predefined'",
+            shiny::numericInput(ns("coordinate_count"), "Expected pixels per sample", 1600, min = 1, step = 1),
+            ns = ns)),
           shiny::column(3, shiny::textInput(ns("positive_matrix"), "Positive-mode matrix", "DHB")),
           shiny::column(3, shiny::textInput(ns("negative_matrix"), "Negative-mode matrix", "9AA"))
         ),
@@ -84,6 +93,9 @@ fpq_project_server <- function(id, state) {
             default_exposure = exposure,
             pixel_size_um = as.numeric(input$pixel_size_um),
             expected_coordinate_count = as.integer(input$coordinate_count),
+            pixel_geometry_policy = input$pixel_geometry_policy %||%
+              "strict_predefined",
+            primary_normalization_method = "spectrum_sum",
             positive_matrix = trimws(input$positive_matrix %||% "DHB"),
             negative_matrix = trimws(input$negative_matrix %||% "9AA"),
             full_pixel = TRUE,
@@ -127,6 +139,14 @@ fpq_project_server <- function(id, state) {
             "Positive and Negative modes" = "BOTH",
             "Detect automatically" = "AUTO"),
           selected = state$selected_ion_mode()),
+        htmltools::tags$h3("Primary intensity strategy"),
+        shiny::radioButtons(session$ns("primary_normalization_method"), NULL,
+          choices = fpq_normalization_labels(),
+          selected = fpq_normalization_method(state$configuration())),
+        htmltools::tags$dl(lapply(names(fpq_normalization_descriptions()),
+          function(method) htmltools::tagList(
+            htmltools::tags$dt(fpq_normalization_labels()[[method]]),
+            htmltools::tags$dd(fpq_normalization_descriptions()[[method]])))),
         if (state$selected_ion_mode() %in% c("POS", "BOTH", "AUTO"))
           htmltools::tags$p(class = "fpq-warning-panel",
             "Positive and combined workflows with passing technical evidence are executable as Technical Validation Candidates; independent scientific review remains pending."),
@@ -140,6 +160,8 @@ fpq_project_server <- function(id, state) {
           "Open or create a project before saving the analysis setup.")
         config <- fpq_apply_analysis_design(state$configuration(),
           input$analysis_type, input$selected_ion_mode)
+        config <- fpq_set_normalization_method(config,
+          input$primary_normalization_method %||% "spectrum_sum")
         config$schema_version <- config$schema_version %||% "1.0.0"
         config$dataset_id <- config$dataset_id %||% "dset-project-configuration"
         fpq_with_project_lock(project$root, {
@@ -151,6 +173,8 @@ fpq_project_server <- function(id, state) {
           preferences$enabled_modes <- config$enabled_ion_modes
           preferences$analysis_uses_both_ion_modes <-
             config$analysis_uses_both_ion_modes
+          preferences$primary_normalization_method <-
+            config$primary_normalization_method
           fpq_save_project(project, list(project_preferences = preferences))
         })
         state$project(fpq_open_project(project$root))
@@ -221,17 +245,32 @@ fpq_project_server <- function(id, state) {
               "Pixel size (um)",
               config$pixel_size_um %||% preferences$pixel_size_um %||% 40,
               min = 0.001),
-            shiny::numericInput(session$ns("edit_coordinate_count"),
-              "Expected pixels per sample",
-              config$expected_coordinate_count %||%
-                preferences$expected_coordinate_count %||% 1600,
-              min = 1, step = 1),
+            shiny::radioButtons(session$ns("edit_pixel_geometry_policy"),
+              "Pixel geometry policy",
+              c("Strict predefined pixel count" = "strict_predefined",
+                "Unequal / sparse pixel area" = "sparse_observed"),
+              selected = config$pixel_geometry_policy %||%
+                preferences$pixel_geometry_policy %||% "strict_predefined"),
+            htmltools::tags$p(class = "help-block",
+              "Unequal / sparse pixel area is a Technical Validation Candidate. It uses only stored coordinates and spectra; it does not impute, pad, or create zero-valued pixels."),
+            shiny::conditionalPanel(
+              "input.edit_pixel_geometry_policy == 'strict_predefined'",
+              shiny::numericInput(session$ns("edit_coordinate_count"),
+                "Expected pixels per sample",
+                config$expected_coordinate_count %||%
+                  preferences$expected_coordinate_count %||% 1600,
+                min = 1, step = 1), ns = session$ns),
             shiny::textInput(session$ns("edit_positive_matrix"),
               "Positive-mode matrix",
               config$positive_matrix %||% preferences$positive_matrix %||% "DHB"),
             shiny::textInput(session$ns("edit_negative_matrix"),
               "Negative-mode matrix",
               config$negative_matrix %||% preferences$negative_matrix %||% "9AA"),
+            shiny::radioButtons(session$ns("edit_primary_normalization_method"),
+              "Primary intensity strategy", choices = fpq_normalization_labels(),
+              selected = fpq_normalization_method(config)),
+            htmltools::tags$p(class = "help-block",
+              "Spectrum-sum is the validated V1 reference. RMS and Median are V2 technical-validation methods."),
             shiny::actionButton(session$ns("save_acquisition"),
               "Save Acquisition Metadata", class = "btn-primary"))
         })
@@ -245,13 +284,16 @@ fpq_project_server <- function(id, state) {
         negative_matrix <- trimws(input$edit_negative_matrix %||% "")
         pixel_size <- suppressWarnings(as.numeric(input$edit_pixel_size_um))
         coordinate_count <- suppressWarnings(as.integer(input$edit_coordinate_count))
+        geometry_policy <- input$edit_pixel_geometry_policy %||%
+          "strict_predefined"
         if (!nzchar(exposure))
           fpq_stop("project.exposure_blank",
             "Exposure or acquisition label must be nonblank.", "configuration")
         if (!is.finite(pixel_size) || pixel_size <= 0)
           fpq_stop("project.pixel_size",
             "Pixel size must be a positive number.", "configuration")
-        if (is.na(coordinate_count) || coordinate_count <= 0)
+        if (identical(geometry_policy, "strict_predefined") &&
+            (is.na(coordinate_count) || coordinate_count <= 0))
           fpq_stop("project.coordinate_count",
             "Expected pixels per sample must be a positive integer.",
             "configuration")
@@ -264,8 +306,11 @@ fpq_project_server <- function(id, state) {
         config$exposure_label <- exposure
         config$pixel_size_um <- pixel_size
         config$expected_coordinate_count <- coordinate_count
+        config$pixel_geometry_policy <- geometry_policy
         config$positive_matrix <- positive_matrix
         config$negative_matrix <- negative_matrix
+        config <- fpq_set_normalization_method(config,
+          input$edit_primary_normalization_method %||% "spectrum_sum")
         config$schema_version <- config$schema_version %||% "1.0.0"
         config$dataset_id <- config$dataset_id %||%
           "dset-project-configuration"
@@ -274,8 +319,11 @@ fpq_project_server <- function(id, state) {
         preferences$default_exposure <- exposure
         preferences$pixel_size_um <- pixel_size
         preferences$expected_coordinate_count <- coordinate_count
+        preferences$pixel_geometry_policy <- geometry_policy
         preferences$positive_matrix <- positive_matrix
         preferences$negative_matrix <- negative_matrix
+        preferences$primary_normalization_method <-
+          config$primary_normalization_method
         preferences$full_pixel <- TRUE
 
         fpq_with_project_lock(project$root, {

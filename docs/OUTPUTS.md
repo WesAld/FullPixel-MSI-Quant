@@ -1,5 +1,22 @@
 # Output Workbooks
 
+## V2 normalization fields
+
+Pixel output preserves all V1 fields and adds `rms_denominator`,
+`valid_rms_denominator`, `rms_normalized_per_million`, `median_denominator`,
+`valid_median_denominator`, `median_normalized_per_million`,
+`primary_normalization_method`, and `primary_intensity`.
+
+Feature summaries retain legacy `normalized_*` names exclusively for
+spectrum-sum values. RMS uses `rms_normalized_*`; Median uses
+`median_normalized_*`; Raw retains established `raw_*` fields. Explicit
+`primary_mean_all_valid_pixels` and
+`primary_mean_conservative_detected_pixels` fields route the selected family.
+
+Legacy TIC-named sheets and columns remain spectrum-sum-only. Non-spectrum-sum
+V2 exports use method-explicit primary names and include normalization
+provenance.
+
 ## Quantify Samples Only
 
 The five-sheet workbook contains:

@@ -95,6 +95,28 @@ fpq_generic_two_group_final_workbook_sheets <- function() {
   c("Mean_Log2FC", "All_Pixels", "TIC_normalized_intensity", "QC", "README")
 }
 
+fpq_primary_intensity_sheet_from_names <- function(sheets, position = 3L) {
+  if (length(sheets) < position)
+    return(NA_character_)
+  candidate <- sheets[[position]]
+  allowed <- c(
+    "TIC_normalized_intensity", "Primary_RAW_Intensity",
+    "Primary_RMS_Intensity", "Primary_MEDIAN_Intensity"
+  )
+  if (candidate %in% allowed) candidate else NA_character_
+}
+
+fpq_all_features_sheet_from_names <- function(sheets, position = 4L) {
+  if (length(sheets) < position)
+    return(NA_character_)
+  candidate <- sheets[[position]]
+  allowed <- c(
+    "All_Features_TIC_Normalized", "All_Features_RAW",
+    "All_Features_RMS", "All_Features_MEDIAN"
+  )
+  if (candidate %in% allowed) candidate else NA_character_
+}
+
 fpq_validate_generic_two_group_final_results_workbook <- function(path) {
   errors <- character()
   if (!file.exists(path))
@@ -105,7 +127,8 @@ fpq_validate_generic_two_group_final_results_workbook <- function(path) {
     errors <<- c(errors, paste("openxlsx:", conditionMessage(e)))
     character()
   })
-  expected <- fpq_generic_two_group_final_workbook_sheets()
+  intensity_sheet <- fpq_primary_intensity_sheet_from_names(sheets)
+  expected <- c("Mean_Log2FC", "All_Pixels", intensity_sheet, "QC", "README")
   if (!identical(sheets, expected))
     errors <- c(errors,
       "Worksheet names or order do not match the generic two-group contract.")
@@ -131,12 +154,13 @@ fpq_validate_generic_two_group_final_results_workbook <- function(path) {
   )
   mean_headers <- read_headers("Mean_Log2FC")
   pixel_headers <- read_headers("All_Pixels")
-  local_headers <- read_headers("TIC_normalized_intensity")
+  local_headers <- if (is.na(intensity_sheet)) character() else
+    read_headers(intensity_sheet)
 
   header_sets <- list(
     Mean_Log2FC = mean_headers,
     All_Pixels = pixel_headers,
-    TIC_normalized_intensity = local_headers
+    primary_intensity = local_headers
   )
   for (sheet in names(header_sets)) {
     headers <- header_sets[[sheet]]
@@ -194,7 +218,7 @@ fpq_validate_generic_two_group_final_results_workbook <- function(path) {
       "All_Pixels must contain exactly one dynamic detection-change column.")
   if (length(local_change) != 1L)
     errors <- c(errors,
-      "TIC_normalized_intensity must contain exactly one dynamic local-intensity log2FC column.")
+      "The primary-intensity sheet must contain exactly one dynamic local-intensity log2FC column.")
 
   inferential_tokens <- c(
     "p_value", "pvalue", "q_value", "qvalue", "fdr",
@@ -294,7 +318,10 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
     errors <<- c(errors, paste("openxlsx:", conditionMessage(e)))
     character()
   })
-  expected <- fpq_all_features_comparison_workbook_sheets()
+  intensity_sheet <- fpq_primary_intensity_sheet_from_names(sheets)
+  all_features_sheet <- fpq_all_features_sheet_from_names(sheets)
+  expected <- c("Mean_Log2FC", "All_Pixels", intensity_sheet,
+                all_features_sheet, "QC", "README")
   if (!identical(sheets, expected))
     errors <- c(errors,
       "Worksheet names or order do not match the extended comparison contract.")
@@ -309,7 +336,8 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
   base_headers <- list(
     Mean_Log2FC = read_headers("Mean_Log2FC"),
     All_Pixels = read_headers("All_Pixels"),
-    TIC_normalized_intensity = read_headers("TIC_normalized_intensity")
+    primary_intensity = if (is.na(intensity_sheet)) character() else
+      read_headers(intensity_sheet)
   )
   for (sheet in names(base_headers)) {
     headers <- base_headers[[sheet]]
@@ -338,12 +366,12 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
       "Mean_Log2FC does not contain a descriptive log2 fold-change column.")
 
   all_features <- tryCatch(suppressWarnings(openxlsx::read.xlsx(
-    path, sheet = "All_Features_TIC_Normalized",
+    path, sheet = all_features_sheet,
     check.names = FALSE)), error = function(e) NULL)
   if (is.null(all_features) || !is.data.frame(all_features) ||
       !nrow(all_features)) {
     errors <- c(errors,
-      "All_Features_TIC_Normalized is missing or empty.")
+      "The all-features primary-intensity sheet is missing or empty.")
   } else {
     required <- c(
       "dataset_id", "ion_mode", "mzmine_row_id", "target_mz",
@@ -352,11 +380,20 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
     missing <- setdiff(required, names(all_features))
     if (length(missing))
       errors <- c(errors, paste(
-        "All_Features_TIC_Normalized is missing:",
+        "The all-features primary-intensity sheet is missing:",
         paste(missing, collapse = ", ")))
 
+    intensity_suffix <- if (identical(all_features_sheet,
+                                      "All_Features_TIC_Normalized")) {
+      "_TIC_normalized_intensity"
+    } else if (identical(all_features_sheet, "All_Features_RAW")) {
+      "_RAW_intensity"
+    } else {
+      paste0("_", sub("All_Features_", "", all_features_sheet),
+             "_normalized_intensity")
+    }
     sample_columns <- names(all_features)[endsWith(
-      names(all_features), "_TIC_normalized_intensity")]
+      names(all_features), intensity_suffix)]
     mean_columns <- sample_columns[startsWith(sample_columns, "mean_")]
     individual_columns <- setdiff(sample_columns, mean_columns)
     fold_columns <- names(all_features)[startsWith(
@@ -445,7 +482,12 @@ fpq_validate_published_final_results_workbook <- function(path) {
   sheets <- tryCatch(openxlsx::getSheetNames(path),
                      error = function(e) character())
 
-  if (identical(sheets, fpq_all_features_comparison_workbook_sheets()))
+  all_features_contract <- length(sheets) == 6L &&
+    identical(sheets[c(1L, 2L, 5L, 6L)],
+              c("Mean_Log2FC", "All_Pixels", "QC", "README")) &&
+    !is.na(fpq_primary_intensity_sheet_from_names(sheets)) &&
+    !is.na(fpq_all_features_sheet_from_names(sheets))
+  if (all_features_contract)
     return(fpq_validate_all_features_comparison_workbook(path))
 
   if (identical(sheets, fpq_quantify_only_final_workbook_sheets()))

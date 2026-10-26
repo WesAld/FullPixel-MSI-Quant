@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Create one target row with individual readout columns for every sample."""
 from __future__ import annotations
-import argparse, hashlib, json
+import argparse, hashlib, json, sys
 from pathlib import Path
 import pandas as pd
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from normalization_routing import provenance, resolve_method, summary_columns
 
 
 def sha(path: Path) -> str:
@@ -46,10 +48,12 @@ def main() -> int:
         if not sample_ids or any(not x for x in sample_ids) or len(sample_ids) != len(set(sample_ids)):
             raise RuntimeError("At least one unique nonblank sample ID is required.")
         frame = pd.read_csv(source, low_memory=False)
+        method = resolve_method(req)
+        overall_source, local_source = summary_columns(method)
         required = {
             "dataset_id", "target_id", "mzmine_row_id", "target_mz", "sample_id",
-            "normalized_mean_all_valid_pixels",
-            "normalized_mean_conservative_detected_pixels",
+            overall_source,
+            local_source,
             "conservative_detected_pixel_count",
             "conservative_detection_fraction",
             "primary_quantification_eligible", "primary_qc_status",
@@ -67,16 +71,18 @@ def main() -> int:
             raise RuntimeError("Extraction dimensions are incomplete for the registered sample set.")
         out = frame[key].drop_duplicates().sort_values(
             ["mzmine_row_id", "target_mz"], kind="stable").reset_index(drop=True)
+        frame["primary_mean_all_valid_pixels"] = frame[overall_source]
+        frame["primary_mean_conservative_detected_pixels"] = frame[local_source]
         metrics = [
-            "normalized_mean_all_valid_pixels",
-            "normalized_mean_conservative_detected_pixels",
+            "primary_mean_all_valid_pixels",
+            "primary_mean_conservative_detected_pixels",
             "conservative_detected_pixel_count",
             "conservative_detection_fraction",
             "primary_quantification_eligible", "primary_qc_status",
         ]
         suffix = {
-            "normalized_mean_all_valid_pixels": "overall_normalized_signal",
-            "normalized_mean_conservative_detected_pixels": "local_strong_pixel_intensity",
+            "primary_mean_all_valid_pixels": "overall_normalized_signal",
+            "primary_mean_conservative_detected_pixels": "local_strong_pixel_intensity",
             "conservative_detected_pixel_count": "conservative_detected_pixel_count",
             "conservative_detection_fraction": "conservative_detection_fraction",
             "primary_quantification_eligible": "primary_quantification_eligible",
@@ -90,6 +96,7 @@ def main() -> int:
             raise RuntimeError("Per-sample summary row retention failed.")
         workspace = Path(req["output_working_directory"])
         workspace.mkdir(parents=True, exist_ok=False)
+        out.insert(4, "primary_normalization_method", method)
         output = workspace / f'{req["dataset_id"]}_QuantifyOnly_Sample_Metrics.csv'
         out.to_csv(output, index=False)
         stdout = workspace / "stdout.log"; stderr = workspace / "stderr.log"
@@ -108,6 +115,7 @@ def main() -> int:
                          "reason": "No comparison or historical oracle applies to per-sample pivoting."},
             output_validation={"status": "PASS", "targets": target_count,
                                "samples": len(sample_ids), "rows": len(out)},
+            normalization=provenance(method, req.get("approved_scientific_configuration", {}).get("normalization_scale", 1000000)),
             validation_records=[{
                 "check_id": "quantify_only.sample_metrics", "status": "PASS",
                 "category": "scientific", "blocking": False,

@@ -190,15 +190,27 @@
     },
     "pixel_metadata": {
       "type": "object",
-      "required": [
-        "expected_coordinate_count"
-      ]
+      "properties": {
+        "pixel_geometry_policy": {
+          "type": "string",
+          "enum": ["strict_predefined", "sparse_observed"]
+        },
+        "expected_coordinate_count": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      }
     },
     "approved_scientific_configuration": {
       "type": "object"
     },
     "retention_options": {
       "type": "object"
+    },
+    "primary_normalization_method": {
+      "type": "string",
+      "enum": ["raw", "spectrum_sum", "rms", "median"],
+      "default": "spectrum_sum"
     },
     "environment_requirements": {
       "type": "object",

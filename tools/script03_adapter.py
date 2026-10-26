@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Strict frozen-source adapter for the approved Script 03 boundary."""
 from __future__ import annotations
-import argparse, csv, hashlib, json, math, os, re, subprocess, sys, time
+import argparse, csv, hashlib, json, math, os, re, shutil, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +24,17 @@ REFERENCE_PATH = Path(
     "PVL_Single_Negative/ThreeReadout_ReplicateSummary_20260730_150047/"
     "PVL_Single_Negative_ThreeReadout_Summary.csv"
 )
+UNRESOLVED = object()
+
+def resolve_executable(configured):
+    value = str(configured or "").strip()
+    if not value:
+        return None
+    candidate = Path(value)
+    if candidate.is_file():
+        return str(candidate.resolve())
+    resolved = shutil.which(value)
+    return str(Path(resolved).resolve()) if resolved else None
 
 def sha(path: Path) -> str:
     h = hashlib.sha256()
@@ -36,7 +47,8 @@ def issue(check_id, message, category="configuration"):
     return {"check_id": check_id, "status": "FAIL", "message": message,
             "category": category, "blocking": True}
 
-def validate_request(req: dict, check_environment=True):
+def validate_request(req: dict, check_environment=True,
+                     r_executable=UNRESOLVED):
     problems = []
     expected = {"stage_id": "summarize_replicate_readouts",
         "scientific_core_version": "1.0.0"}
@@ -90,12 +102,14 @@ def validate_request(req: dict, check_environment=True):
     if workspace.exists() and any(workspace.iterdir()):
         problems.append(issue("workspace.not_empty", "Workspace must be absent or empty.", "infrastructure"))
     if check_environment:
-        rex = Path(req.get("environment_requirements", {}).get("r_executable", ""))
-        if not rex.is_file():
+        rex = (resolve_executable(req.get("environment_requirements", {}).get(
+            "r_executable", "")) if r_executable is UNRESOLVED
+            else r_executable)
+        if rex is None:
             problems.append(issue("environment.r", "Configured Rscript is unavailable.", "environment"))
         else:
             expression = "quit(status=if(all(vapply(c('data.table','openxlsx'),requireNamespace,logical(1),quietly=TRUE)))0 else 9)"
-            result = subprocess.run([str(rex), "-e", expression], capture_output=True, text=True)
+            result = subprocess.run([rex, "-e", expression], capture_output=True, text=True)
             if result.returncode:
                 problems.append(issue("environment.packages", "data.table and openxlsx must be preinstalled.", "environment"))
     return problems
@@ -218,7 +232,10 @@ def main():
               "run_id": req.get("run_id"), "status": "preflight_failed",
               "validation_records": [], "execution_started": False,
               "produced_outputs": []}
-    problems = validate_request(req)
+    configured_rex = req.get("environment_requirements", {}).get(
+        "r_executable", "")
+    resolved_rex = resolve_executable(configured_rex)
+    problems = validate_request(req, r_executable=resolved_rex)
     report["validation_records"] = problems
     if problems:
         report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -229,16 +246,17 @@ def main():
         copy_path, transformations = make_execution_copy(req, workspace)
         report.update(frozen_script_hash=EXPECTED_SCRIPT_HASH,
                       execution_copy_hash=sha(copy_path),
-                      configuration_transformations=transformations)
+                      configuration_transformations=transformations,
+                      r_executable_configured=configured_rex,
+                      r_executable_resolved=resolved_rex)
         stdout, stderr = workspace / "stdout.log", workspace / "stderr.log"
         report.update(execution_started=True, stdout_path=str(stdout),
                       stderr_path=str(stderr), status="running",
                       started_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-        rex = req["environment_requirements"]["r_executable"]
         with stdout.open("w", encoding="utf-8") as out, stderr.open("w", encoding="utf-8") as err:
-            process = subprocess.run([rex, str(copy_path)], cwd=workspace,
+            process = subprocess.run([resolved_rex, str(copy_path)], cwd=workspace,
                                      stdout=out, stderr=err)
         report["process_exit_status"] = process.returncode
         if process.returncode:

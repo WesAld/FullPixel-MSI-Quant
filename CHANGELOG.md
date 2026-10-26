@@ -4,6 +4,14 @@ All notable changes to FullPixel MSI Quant are documented here.
 
 ## [Unreleased]
 
+### V2 normalization development
+
+- Identifies the application as FullPixel MSI Quant V2 `2.0.0-dev`.
+- Adds selectable Raw, legacy spectrum-sum, RMS, and Median primary intensity
+  strategies while keeping the frozen V1 scientific source unchanged.
+- RMS and Median remain development-stage Technical Validation Candidate
+  methods and are not claimed as publication-validated.
+
 ## [1.1.1] - 2026-08-01
 
 ### Fixed

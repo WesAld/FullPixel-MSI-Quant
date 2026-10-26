@@ -44,6 +44,26 @@ I_{j,p}^{norm} =
 The denominator is the sum of all stored centroid intensities in the same valid
 pixel. The method is described as **spectrum-sum normalization**.
 
+## V2 selectable primary intensity strategies
+
+FullPixel MSI Quant V2 2.0.0-dev retains multiple signal families from the
+same stored centroid spectra. `primary_normalization_method` selects the family
+used downstream; a missing field resolves to `spectrum_sum` for compatibility.
+
+- **Raw (`raw`)** uses `raw_target_intensity` without scaling or transformation.
+- **TIC / spectrum-sum (`spectrum_sum`)** preserves the V1 formula above.
+- **RMS (`rms`)** uses positive finite stored centroid intensities only:
+  `sqrt(mean(I_positive^2))`, then divides and scales by 1,000,000.
+- **Median (`median`)** uses `median(I_positive)` for the same positive finite
+  population, then divides and scales by 1,000,000.
+
+RMS and Median do not create dense bins, include explicit zeros or negative
+intensities, impute missing peaks, or add pseudocounts. Existing spectrum
+integrity rejection remains authoritative. An empty positive population gives
+a zero denominator, an invalid-denominator flag, and a missing normalized
+value. RMS and Median are V2 Technical Validation Candidate methods, not
+publication-validated methods.
+
 ## Detection definitions
 
 - Inclusive detection: raw target intensity greater than 0.

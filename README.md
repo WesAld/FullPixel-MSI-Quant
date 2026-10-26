@@ -1,6 +1,10 @@
-# FullPixel MSI Quant
+# FullPixel MSI Quant V2
 
-**FullPixel MSI Quant** is a local R Shiny workflow for spectrum-sum-normalized
+> **Development version:** 2.0.0-dev  
+> **Status:** Technical Validation Candidate; not a final validated release.
+
+**FullPixel MSI Quant V2** is a local R Shiny workflow for selectable raw,
+spectrum-sum, RMS, or median quantitative intensity analysis of
 full-pixel MALDI mass spectrometry imaging quantification from aligned MZmine
 features.
 
@@ -9,7 +13,7 @@ Quantitative intensities are extracted from the original centroided imzML/IBD
 spectra. Putative annotation metadata is integrated only after quantitative
 summarization.
 
-> **Release:** 1.0.0  
+> **V1 reference release:** 1.1.1  
 > **Validation classification:** Technical Validation Candidate  
 > **Primary tested platform:** Windows 11 with R 4.6.0
 

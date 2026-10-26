@@ -1,7 +1,7 @@
 Package: FullPixelMSIQuant
 Type: Package
 Title: Full-Pixel MALDI-MSI Quantification from MZmine-Aligned Features
-Version: 1.1.1
+Version: 2.0.0.9000
 Authors@R: person(
     given = "Wessel",
     family = "Alderden",

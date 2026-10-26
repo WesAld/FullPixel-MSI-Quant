@@ -2,7 +2,7 @@ fpq_home_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
     htmltools::tags$section(class = "fpq-hero",
-      htmltools::tags$h1("FullPixel MSI Quant"),
+      htmltools::tags$h1("FullPixel MSI Quant V2"),
       htmltools::tags$p(class = "fpq-subtitle",
         "A Shiny application for spectrum-sum-normalized quantification of MZmine-aligned features from full-pixel MALDI-MSI data."),
       htmltools::tags$p("The aligned MZmine feature list supplies feature identifiers and target m/z values. Quantitative pixel-level signal is extracted from the original centroided full-pixel imzML/IBD data."),
@@ -77,8 +77,8 @@ fpq_about_server <- function(id, state) {
       integrity <- fpq_verify_scientific_core(state$repository_root)
       htmltools::tags$div(class = "fpq-card-grid",
         htmltools::tags$section(class = "fpq-card",
-          htmltools::tags$h3("FullPixel MSI Quant"),
-          htmltools::tags$p("Application version 1.1.1"),
+          htmltools::tags$h3("FullPixel MSI Quant V2"),
+          htmltools::tags$p("Application version 2.0.0-dev"),
           htmltools::tags$p(paste("Package version", as.character(
             utils::packageVersion("FullPixelMSIQuant")))),
           htmltools::tags$p("Scientific-core version 1.0.0"),
@@ -123,7 +123,7 @@ fpq_shiny_app <- function(repository_root = fpq_repo_root()) {
   @media(max-width:900px){.fpq-card-grid{grid-template-columns:1fr;}}
   "
   ui <- shiny::navbarPage(
-    title = "FullPixel MSI Quant",
+    title = "FullPixel MSI Quant V2",
     id = "main_navigation", inverse = TRUE, collapsible = TRUE,
     header = htmltools::tagList(htmltools::tags$style(htmltools::HTML(css)),
       htmltools::tags$div(class = "fpq-status-strip",

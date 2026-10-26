@@ -164,6 +164,15 @@ fpq_workflow_mode_dataset_id <- function(project, exposure, mode,
         if (mode == "POS") "Positive" else "Negative", sep = "_")
 }
 
+fpq_pixel_geometry_policy <- function(config = list(), preferences = list()) {
+  policy <- config$pixel_geometry_policy %||%
+    preferences$pixel_geometry_policy %||% "strict_predefined"
+  if (!policy %in% c("strict_predefined", "sparse_observed"))
+    fpq_stop("workflow.pixel_geometry_policy",
+      paste("Unsupported pixel geometry policy:", policy), "configuration")
+  policy
+}
+
 fpq_mode_acquisition_metadata <- function(project, config, mode) {
   preferences <- project$manifest$project_preferences %||% list()
   matrix <- if (mode == "POS")
@@ -185,8 +194,9 @@ fpq_mode_acquisition_metadata <- function(project, config, mode) {
     fpq_stop("workflow.coordinate_count",
       "Expected pixels per sample must be a positive integer.", "configuration")
   list(matrix = trimws(matrix), pixel_size_um = pixel_size,
-       full_pixel = isTRUE(preferences$full_pixel %||% TRUE),
-       expected_coordinate_count = coordinates)
+        full_pixel = isTRUE(preferences$full_pixel %||% TRUE),
+        expected_coordinate_count = coordinates,
+        pixel_geometry_policy = fpq_pixel_geometry_policy(config, preferences))
 }
 
 fpq_apply_mass_tolerance_to_request <- function(request, config) {
@@ -242,7 +252,11 @@ fpq_prepare_mode_extraction_request <- function(
   exact_pvl <- project$manifest$scientific_profile_id %in%
       c("pvl-fullpixel-reference-v1", "fullpixel-40um-1600px-v1") &&
     identical(exposure, "Single") && identical(mode, "NEG") &&
-    length(samples) == 6L && isTRUE(tolerance$validated_default)
+    length(samples) == 6L && isTRUE(tolerance$validated_default) &&
+    identical(fpq_normalization_method(config), "spectrum_sum") &&
+    identical(fpq_pixel_geometry_policy(
+      config, project$manifest$project_preferences %||% list()),
+      "strict_predefined")
   acquisition <- fpq_mode_acquisition_metadata(project, config, mode)
 
   request$request_id <- paste0("req-", token, "-extract")
@@ -300,6 +314,8 @@ fpq_prepare_mode_extraction_request <- function(
                                                  "full_pixel")]
   request$pixel_metadata$expected_coordinate_count <-
     acquisition$expected_coordinate_count
+  request$pixel_metadata$pixel_geometry_policy <-
+    acquisition$pixel_geometry_policy
   request$display_metadata <- list(
     project_name = project$manifest$project_name,
     dataset_prefix = fpq_generic_token(project$manifest$project_name, "Project"),
@@ -307,6 +323,14 @@ fpq_prepare_mode_extraction_request <- function(
     reference_condition = request$conditions[[1]]$display_label,
     comparison_condition = request$conditions[[2]]$display_label,
     sample_mappings = request$internal_role_mappings)
+  request$primary_normalization_method <- fpq_normalization_method(config)
+  request$approved_scientific_configuration$primary_normalization_method <-
+    request$primary_normalization_method
+  request$display_metadata$normalization <- list(
+    application_version = "2.0.0-dev",
+    primary_normalization_method = request$primary_normalization_method,
+    normalization_scale = request$approved_scientific_configuration$normalization_scale,
+    normalization_definition_version = fpq_normalization_definition_version())
   fpq_apply_mass_tolerance_to_request(request, config)
 }
 
@@ -1035,4 +1059,3 @@ fpq_resume_full_workflow_after_extraction <- function(
     completed
   }, error = function(e) fail_resume(e, current))
 }
-
