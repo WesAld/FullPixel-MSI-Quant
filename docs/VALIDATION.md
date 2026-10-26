@@ -1,5 +1,28 @@
 # Validation Status
 
+## V2 GUI normalization validation
+
+The `2.0.0-dev` GUI completed the two-group Positive-plus-Negative workflow and
+final workbook export for all four selectable primary intensity strategies:
+
+| GUI strategy | Internal value | Primary sheet | All-features sheet |
+|---|---|---|---|
+| Raw / no normalization | `raw` | `Primary_RAW_Intensity` | `All_Features_RAW` |
+| TIC / spectrum-sum | `spectrum_sum` | `TIC_normalized_intensity` | `All_Features_TIC_Normalized` |
+| RMS | `rms` | `Primary_RMS_Intensity` | `All_Features_RMS` |
+| Median | `median` | `Primary_MEDIAN_Intensity` | `All_Features_MEDIAN` |
+
+Each final workbook retained 3,802 features and passed source-row retention,
+overall, local, detection, and two-group replicate-mapping audits. Numerical
+audit differences were approximately `1e-14` to `1e-15`, below the established
+`1e-10` tolerance. GUI selection persistence and reload were also verified.
+
+These results validate method routing and implementation behavior. They do not
+establish RMS or Median as scientifically superior to spectrum-sum. The primary
+manuscript method remains TIC/spectrum-sum, RMS is used for robustness, and
+Median is an additional sensitivity analysis. The outputs retain the
+**Technical Validation Candidate** classification.
+
 ## Classification
 
 FullPixel MSI Quant 1.0.0 is released as a **Technical Validation Candidate**.

@@ -32,6 +32,25 @@ def summary_columns(method: str) -> tuple[str, str]:
     return mapping[method]
 
 
+def workbook_sheet_names(method: str) -> tuple[str, str]:
+    """Return the primary- and all-features-sheet names for a method."""
+    if method not in METHODS:
+        raise ValueError(f"Unsupported primary_normalization_method: {method}")
+    if method == "spectrum_sum":
+        return "TIC_normalized_intensity", "All_Features_TIC_Normalized"
+    token = method.upper()
+    return f"Primary_{token}_Intensity", f"All_Features_{token}"
+
+
+def workbook_intensity_column_suffix(method: str) -> str:
+    """Return the method-aware suffix used for primary intensity columns."""
+    if method not in METHODS:
+        raise ValueError(f"Unsupported primary_normalization_method: {method}")
+    token = "TIC" if method == "spectrum_sum" else method.upper()
+    return (f"_{token}_intensity" if method == "raw"
+            else f"_{token}_normalized_intensity")
+
+
 def route_extraction_summary(source: Path, destination: Path, method: str) -> Path:
     overall, local = summary_columns(method)
     frame = pd.read_csv(source, low_memory=False)

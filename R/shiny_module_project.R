@@ -141,7 +141,7 @@ fpq_project_server <- function(id, state) {
           selected = state$selected_ion_mode()),
         htmltools::tags$h3("Primary intensity strategy"),
         shiny::radioButtons(session$ns("primary_normalization_method"), NULL,
-          choices = fpq_normalization_labels(),
+          choices = fpq_normalization_ui_choices(),
           selected = fpq_normalization_method(state$configuration())),
         htmltools::tags$dl(lapply(names(fpq_normalization_descriptions()),
           function(method) htmltools::tagList(
@@ -267,7 +267,8 @@ fpq_project_server <- function(id, state) {
               "Negative-mode matrix",
               config$negative_matrix %||% preferences$negative_matrix %||% "9AA"),
             shiny::radioButtons(session$ns("edit_primary_normalization_method"),
-              "Primary intensity strategy", choices = fpq_normalization_labels(),
+              "Primary intensity strategy",
+              choices = fpq_normalization_ui_choices(),
               selected = fpq_normalization_method(config)),
             htmltools::tags$p(class = "help-block",
               "Spectrum-sum is the validated V1 reference. RMS and Median are V2 technical-validation methods."),

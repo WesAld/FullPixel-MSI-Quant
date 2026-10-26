@@ -52,6 +52,36 @@ class NormalizationRoutingTests(unittest.TestCase):
             self.assertEqual(record["application_version"], "2.0.0-dev")
             self.assertEqual(record["normalization_scale"], 1_000_000)
 
+    def test_workbook_sheet_names_preserve_tic_and_route_other_methods(self):
+        expected = {
+            "raw": ("Primary_RAW_Intensity", "All_Features_RAW"),
+            "spectrum_sum": ("TIC_normalized_intensity",
+                             "All_Features_TIC_Normalized"),
+            "rms": ("Primary_RMS_Intensity", "All_Features_RMS"),
+            "median": ("Primary_MEDIAN_Intensity", "All_Features_MEDIAN"),
+        }
+        for method, names in expected.items():
+            self.assertEqual(MODULE.workbook_sheet_names(method), names)
+
+    def test_workbook_intensity_suffixes_are_method_aware(self):
+        expected = {
+            "raw": "_RAW_intensity",
+            "spectrum_sum": "_TIC_normalized_intensity",
+            "rms": "_RMS_normalized_intensity",
+            "median": "_MEDIAN_normalized_intensity",
+        }
+        for method, suffix in expected.items():
+            self.assertEqual(
+                MODULE.workbook_intensity_column_suffix(method), suffix)
+
+    def test_workbook_contract_rejects_unsupported_method(self):
+        with self.assertRaisesRegex(
+                ValueError, "Unsupported primary_normalization_method: bad"):
+            MODULE.workbook_sheet_names("bad")
+        with self.assertRaisesRegex(
+                ValueError, "Unsupported primary_normalization_method: bad"):
+            MODULE.workbook_intensity_column_suffix("bad")
+
 
 if __name__ == "__main__":
     unittest.main()

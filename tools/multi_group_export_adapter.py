@@ -22,7 +22,9 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from normalization_routing import provenance, resolve_method
+from normalization_routing import (provenance, resolve_method,
+                                   workbook_intensity_column_suffix,
+                                   workbook_sheet_names)
 
 SHEETS = [
     "Mean_Log2FC",
@@ -697,11 +699,7 @@ def build_workbook_tables(
     )
     all_features = master[all_features_source].copy()
     all_features_rename: dict[str, str] = {}
-    intensity_token = "TIC" if method == "spectrum_sum" else method.upper()
-    intensity_suffix = (
-        f"_{intensity_token}_intensity" if method == "raw"
-        else f"_{intensity_token}_normalized_intensity"
-    )
+    intensity_suffix = workbook_intensity_column_suffix(method)
     for column in columns["overall_samples"]:
         all_features_rename[column] = (
             column.removesuffix("_overall_normalized_signal")
@@ -722,8 +720,7 @@ def build_workbook_tables(
         )
     all_features.rename(columns=all_features_rename, inplace=True)
 
-    intensity_sheet = "TIC_normalized_intensity" if method == "spectrum_sum" else f"Primary_{method.upper()}_Intensity"
-    all_features_sheet = "All_Features_TIC_Normalized" if method == "spectrum_sum" else f"All_Features_{method.upper()}"
+    intensity_sheet, all_features_sheet = workbook_sheet_names(method)
     return {
         "Mean_Log2FC": overall,
         "All_Pixels": all_pixels,
@@ -755,8 +752,7 @@ def main() -> int:
 
         method = resolve_method(request)
         normalization = provenance(method, request.get("display_metadata", {}).get("normalization", {}).get("normalization_scale", 1000000))
-        intensity_sheet = "TIC_normalized_intensity" if method == "spectrum_sum" else f"Primary_{method.upper()}_Intensity"
-        all_features_sheet = "All_Features_TIC_Normalized" if method == "spectrum_sum" else f"All_Features_{method.upper()}"
+        intensity_sheet, all_features_sheet = workbook_sheet_names(method)
         sheets = ["Mean_Log2FC", "All_Pixels", intensity_sheet, all_features_sheet, "QC", "README"]
         master, masters, source_rows = read_masters(request)
         master, metadata_columns = prepare_metadata(master)
@@ -921,7 +917,7 @@ def main() -> int:
                 ),
                 (
                     "Annotation-focused sheets retain annotated rows; "
-                    "All_Features_TIC_Normalized retains every feature"
+                    f"{all_features_sheet} retains every feature"
                 ),
                 (
                     "Original canonical MZmine annotation scores and "
@@ -991,7 +987,7 @@ def main() -> int:
             )
         if sheet_rows[all_features_sheet] != source_rows:
             raise RuntimeError(
-                "All_Features_TIC_Normalized row retention failed."
+                f"{all_features_sheet} row retention failed."
             )
         if sheet_rows["Mean_Log2FC"] != annotated_rows:
             raise RuntimeError(

@@ -37,9 +37,11 @@ coordinates.
 For every valid pixel and target feature:
 
 1. The nearest centroid within the configured tolerance is selected.
-2. The target intensity is divided by the sum of all stored centroid
-   intensities in that pixel.
-3. The result is multiplied by 1,000,000.
+2. The selected primary strategy is applied: raw intensity, legacy
+   spectrum-sum, RMS, or median normalization. Normalized strategies use the
+   method-specific per-pixel denominator and a scale of 1,000,000.
+3. Method identity is retained through summaries, provenance, and the final
+   workbook contract.
 4. Full-pixel and detection readouts are summarized for each sample.
 5. Group means, fold change, and log2 fold change are calculated only for
    comparison workflows.
@@ -49,6 +51,10 @@ For every valid pixel and target feature:
 The workflow uses no pseudocount, no imputation, no pairing, and no p-values.
 Missing values remain missing. See
 [`docs/SCIENTIFIC_METHOD.md`](docs/SCIENTIFIC_METHOD.md).
+
+GUI persistence and complete two-group final-workbook export have been tested
+for all four strategies. Spectrum-sum remains the primary manuscript method;
+RMS is a robustness analysis and Median is an additional sensitivity analysis.
 
 The validated v1.0.0 mass-tolerance default is `max(10 ppm, 0.002 Da)`. The
 Dataset Configuration page also provides a custom strict combined setting in

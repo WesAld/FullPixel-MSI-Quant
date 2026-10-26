@@ -11,6 +11,16 @@ All notable changes to FullPixel MSI Quant are documented here.
   strategies while keeping the frozen V1 scientific source unchanged.
 - RMS and Median remain development-stage Technical Validation Candidate
   methods and are not claimed as publication-validated.
+- Validates GUI selection, persistence, execution, and final export for Raw,
+  TIC/spectrum-sum, RMS, and Median using the two-group POS+NEG validation
+  project.
+- Routes each method to explicit primary and all-features workbook sheets while
+  preserving the legacy `TIC_normalized_intensity` and
+  `All_Features_TIC_Normalized` spectrum-sum contract.
+- Prevents explicit Raw, RMS, or Median selections from silently defaulting to
+  spectrum-sum during final export.
+- Records the completed generic export stage before all-features finalization,
+  preventing a later final-workbook failure from leaving stale running state.
 
 ## [1.1.1] - 2026-08-01
 

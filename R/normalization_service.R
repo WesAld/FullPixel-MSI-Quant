@@ -21,6 +21,11 @@ fpq_normalization_labels <- function() {
     median = "Median")
 }
 
+fpq_normalization_ui_choices <- function() {
+  labels <- fpq_normalization_labels()
+  stats::setNames(names(labels), unname(labels))
+}
+
 fpq_normalization_descriptions <- function() {
   c(
     raw = paste("Measured target intensity without per-pixel spectral",

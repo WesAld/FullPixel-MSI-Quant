@@ -8,7 +8,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from normalization_routing import provenance, resolve_method
+from normalization_routing import provenance, resolve_method, workbook_sheet_names
 
 
 def sha(path:Path)->str:
@@ -141,7 +141,7 @@ def main():
   filename=f"{safe(req['display_metadata'].get('project_name'))}_{safe(req.get('exposure_label'))}_MALDI_MSI_Final_Results_TECHNICAL_VALIDATION_CANDIDATE.xlsx"
   path=outdir/filename
   wb=Workbook(); wb.remove(wb.active)
-  intensity_sheet='TIC_normalized_intensity' if method=='spectrum_sum' else f'Primary_{method.upper()}_Intensity'
+  intensity_sheet,_=workbook_sheet_names(method)
   for name,df in [('Mean_Log2FC',overall),('All_Pixels',all_pixels),(intensity_sheet,local),('QC',qc),('README',readme)]:
    ws=wb.create_sheet(name); write_df(ws,df)
   wb.calculation.fullCalcOnLoad=True; wb.calculation.forceFullCalc=True; wb.calculation.calcMode='auto'

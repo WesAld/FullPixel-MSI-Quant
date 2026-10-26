@@ -50,6 +50,15 @@ pairing, pseudocounts, or imputation.
 
 The six-sheet workbook contains:
 
+The selected method determines the primary and all-features sheet names:
+
+| Method | Primary sheet | All-features sheet |
+|---|---|---|
+| Raw | `Primary_RAW_Intensity` | `All_Features_RAW` |
+| TIC / spectrum-sum | `TIC_normalized_intensity` | `All_Features_TIC_Normalized` |
+| RMS | `Primary_RMS_Intensity` | `All_Features_RMS` |
+| Median | `Primary_MEDIAN_Intensity` | `All_Features_MEDIAN` |
+
 ### `Mean_Log2FC`
 
 Overall, strong-pixel, and detection-change comparison readouts.
@@ -58,12 +67,13 @@ Overall, strong-pixel, and detection-change comparison readouts.
 
 Full-pixel and detection-oriented sample and group fields.
 
-### `TIC_normalized_intensity`
+### Method-specific primary intensity sheet
 
-Spectrum-sum-normalized individual sample values, group means, fold change, and
-log2 fold change.
+Individual sample values, group means, fold change, and log2 fold change for
+the selected primary strategy. Legacy TIC naming is used only for
+spectrum-sum.
 
-### `All_Features_TIC_Normalized`
+### Method-specific all-features sheet
 
 The complete feature audit table. It retains all registered/extracted features,
 including unannotated features, individual sample intensities, group means,
@@ -82,11 +92,13 @@ data sheets.
 
 ## Compare Multiple Groups
 
-The six-sheet names are the same as the two-group workbook.
+The same method-specific primary and all-features naming contract applies to
+multi-group workbooks.
 
-- `Mean_Log2FC`, `All_Pixels`, and `TIC_normalized_intensity` are
+- `Mean_Log2FC`, `All_Pixels`, and the method-specific primary sheet are
   annotation-focused tables.
-- `All_Features_TIC_Normalized` retains every registered/extracted feature.
+- The method-specific all-features sheet retains every registered/extracted
+  feature.
 - Each treatment has its own reference-versus-treatment group means, fold
   change, and log2 fold change.
 - All registered individual samples are retained.
