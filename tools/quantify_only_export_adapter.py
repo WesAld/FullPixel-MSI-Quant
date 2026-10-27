@@ -164,7 +164,7 @@ def main() -> int:
                       "Primary normalization method", "Normalization definition version",
                       "Detection threshold", "Output interpretation",
                       "Comparison statistics", "Validation status"],
-            "Value": ["2.0.0-dev", req.get("display_metadata", {}).get("project_name"),
+            "Value": ["3.0.0-dev", req.get("display_metadata", {}).get("project_name"),
                       req.get("exposure_label"), "Quantify samples only", mode_names,
                       ", ".join(sample_labels),
                       normalization["normalization_definition"],

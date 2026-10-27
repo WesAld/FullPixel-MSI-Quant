@@ -10,6 +10,8 @@ fpq_new_app_state <- function(repository_root) {
                                              comparisons = list(), ion_mode = "NEG",
                                              exposure_label = "Single",
                                              primary_normalization_method = "spectrum_sum",
+                                             statistical_analyses = list(
+                                               jackknife = list(enabled = FALSE)),
                                              mass_tolerance = fpq_default_mass_tolerance())),
     dirty = shiny::reactiveVal(FALSE),
     validations = shiny::reactiveVal(list()),
@@ -51,6 +53,8 @@ fpq_load_project_configuration <- function(project) {
         preferences$pixel_geometry_policy %||% "strict_predefined",
       primary_normalization_method =
         preferences$primary_normalization_method %||% "spectrum_sum",
+      statistical_analyses = preferences$statistical_analyses %||%
+        list(jackknife = list(enabled = FALSE)),
       positive_matrix = preferences$positive_matrix %||% "DHB",
       negative_matrix = preferences$negative_matrix %||% "9AA",
       mass_tolerance = fpq_default_mass_tolerance()))
@@ -84,6 +88,8 @@ fpq_load_project_configuration <- function(project) {
     preferences$negative_matrix %||% "9AA"
   resolved$mass_tolerance <- resolved$mass_tolerance %||%
     fpq_default_mass_tolerance()
+  resolved$statistical_analyses <- resolved$statistical_analyses %||%
+    preferences$statistical_analyses %||% list(jackknife = list(enabled = FALSE))
   resolved
 }
 

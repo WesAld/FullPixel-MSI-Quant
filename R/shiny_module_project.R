@@ -42,6 +42,10 @@ fpq_project_ui <- function(id) {
 fpq_project_server <- function(id, state) {
   shiny::moduleServer(id, function(input, output, session) {
     location_result <- shiny::reactiveVal(NULL)
+    jackknife_selection <- shiny::reactiveVal(FALSE)
+    shiny::observeEvent(state$configuration(), {
+      jackknife_selection(fpq_jackknife_enabled(state$configuration()))
+    }, ignoreInit = FALSE)
     shiny::observeEvent(input$browse_location, {
       if (.Platform$OS.type != "windows")
         return(shiny::showNotification(
@@ -147,12 +151,22 @@ fpq_project_server <- function(id, state) {
           function(method) htmltools::tagList(
             htmltools::tags$dt(fpq_normalization_labels()[[method]]),
             htmltools::tags$dd(fpq_normalization_descriptions()[[method]])))),
+        shiny::uiOutput(session$ns("jackknife_setup")),
         if (state$selected_ion_mode() %in% c("POS", "BOTH", "AUTO"))
           htmltools::tags$p(class = "fpq-warning-panel",
             "Positive and combined workflows with passing technical evidence are executable as Technical Validation Candidates; independent scientific review remains pending."),
         shiny::actionButton(session$ns("save_next_step"), "Continue",
                             class = "btn-primary"))
     })
+    output$jackknife_setup <- shiny::renderUI(
+      fpq_jackknife_ui(session$ns, state$configuration(),
+        jackknife_selection(), "setup_"))
+    shiny::observeEvent(input$setup_include_jackknife, {
+      design <- fpq_jackknife_design(state$configuration())
+      if (isTRUE(design$eligible)) jackknife_selection(TRUE)
+    })
+    shiny::observeEvent(input$setup_remove_jackknife,
+      jackknife_selection(FALSE))
     shiny::observeEvent(input$save_next_step, {
       tryCatch({
         project <- state$project()
@@ -162,6 +176,7 @@ fpq_project_server <- function(id, state) {
           input$analysis_type, input$selected_ion_mode)
         config <- fpq_set_normalization_method(config,
           input$primary_normalization_method %||% "spectrum_sum")
+        config <- fpq_set_jackknife_enabled(config, jackknife_selection())
         config$schema_version <- config$schema_version %||% "1.0.0"
         config$dataset_id <- config$dataset_id %||% "dset-project-configuration"
         fpq_with_project_lock(project$root, {
@@ -175,6 +190,7 @@ fpq_project_server <- function(id, state) {
             config$analysis_uses_both_ion_modes
           preferences$primary_normalization_method <-
             config$primary_normalization_method
+          preferences$statistical_analyses <- config$statistical_analyses
           fpq_save_project(project, list(project_preferences = preferences))
         })
         state$project(fpq_open_project(project$root))
@@ -272,10 +288,20 @@ fpq_project_server <- function(id, state) {
               selected = fpq_normalization_method(config)),
             htmltools::tags$p(class = "help-block",
               "Spectrum-sum is the validated V1 reference. RMS and Median are V2 technical-validation methods."),
+            shiny::uiOutput(session$ns("jackknife_overview")),
             shiny::actionButton(session$ns("save_acquisition"),
               "Save Acquisition Metadata", class = "btn-primary"))
         })
     })
+    output$jackknife_overview <- shiny::renderUI(
+      fpq_jackknife_ui(session$ns, state$configuration(),
+        jackknife_selection(), "overview_"))
+    shiny::observeEvent(input$overview_include_jackknife, {
+      design <- fpq_jackknife_design(state$configuration())
+      if (isTRUE(design$eligible)) jackknife_selection(TRUE)
+    })
+    shiny::observeEvent(input$overview_remove_jackknife,
+      jackknife_selection(FALSE))
     shiny::observeEvent(input$save_acquisition, {
       project <- state$project()
       if (is.null(project)) return()
@@ -312,6 +338,7 @@ fpq_project_server <- function(id, state) {
         config$negative_matrix <- negative_matrix
         config <- fpq_set_normalization_method(config,
           input$edit_primary_normalization_method %||% "spectrum_sum")
+        config <- fpq_set_jackknife_enabled(config, jackknife_selection())
         config$schema_version <- config$schema_version %||% "1.0.0"
         config$dataset_id <- config$dataset_id %||%
           "dset-project-configuration"
@@ -325,6 +352,7 @@ fpq_project_server <- function(id, state) {
         preferences$negative_matrix <- negative_matrix
         preferences$primary_normalization_method <-
           config$primary_normalization_method
+        preferences$statistical_analyses <- config$statistical_analyses
         preferences$full_pixel <- TRUE
 
         fpq_with_project_lock(project$root, {

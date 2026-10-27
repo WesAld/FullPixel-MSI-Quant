@@ -320,8 +320,10 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
   })
   intensity_sheet <- fpq_primary_intensity_sheet_from_names(sheets)
   all_features_sheet <- fpq_all_features_sheet_from_names(sheets)
-  expected <- c("Mean_Log2FC", "All_Pixels", intensity_sheet,
-                all_features_sheet, "QC", "README")
+  jackknife_enabled <- "Jackknife_Log2FC" %in% sheets
+  expected <- c("Mean_Log2FC",
+                if (jackknife_enabled) "Jackknife_Log2FC",
+                "All_Pixels", intensity_sheet, all_features_sheet, "QC", "README")
   if (!identical(sheets, expected))
     errors <- c(errors,
       "Worksheet names or order do not match the extended comparison contract.")
@@ -468,6 +470,22 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
   if (!is.data.frame(readme) || ncol(readme) < 2L || !nrow(readme))
     errors <- c(errors, "README sheet is missing or malformed.")
 
+  if (jackknife_enabled) {
+    jackknife <- tryCatch(suppressWarnings(openxlsx::read.xlsx(
+      path, sheet = "Jackknife_Log2FC", check.names = FALSE)),
+      error = function(e) NULL)
+    required <- c("Full_Log2FC", "Jackknife_Mean_Log2FC", "Jackknife_SE",
+      "Jackknife_Min_Log2FC", "Jackknife_Max_Log2FC", "Jackknife_Range",
+      "Direction_Stable", "N_Jackknife_Requested", "N_Jackknife_Valid")
+    if (is.null(jackknife) || !all(required %in% names(jackknife)))
+      errors <- c(errors, "Jackknife_Log2FC is missing required V3 columns.")
+    omit_columns <- if (is.null(jackknife)) character() else
+      grep("^JK_Omit_.+_Log2FC$", names(jackknife), value = TRUE)
+    if (length(omit_columns) < 3L)
+      errors <- c(errors,
+        "Jackknife_Log2FC must contain at least three dynamic omission columns.")
+  }
+
   list(
     status = if (length(errors)) "FAIL" else "PASS",
     errors = unique(errors),
@@ -482,9 +500,10 @@ fpq_validate_published_final_results_workbook <- function(path) {
   sheets <- tryCatch(openxlsx::getSheetNames(path),
                      error = function(e) character())
 
-  all_features_contract <- length(sheets) == 6L &&
-    identical(sheets[c(1L, 2L, 5L, 6L)],
-              c("Mean_Log2FC", "All_Pixels", "QC", "README")) &&
+  all_features_contract <- length(sheets) %in% c(6L, 7L) &&
+    identical(sheets[[1L]], "Mean_Log2FC") &&
+    identical(tail(sheets, 2L), c("QC", "README")) &&
+    (length(sheets) == 6L || identical(sheets[[2L]], "Jackknife_Log2FC")) &&
     !is.na(fpq_primary_intensity_sheet_from_names(sheets)) &&
     !is.na(fpq_all_features_sheet_from_names(sheets))
   if (all_features_contract)
@@ -604,6 +623,7 @@ fpq_results_ui <- function(id) {
   shiny::tagList(
     htmltools::tags$h2("Results"),
     shiny::uiOutput(ns("final_workbook")),
+    shiny::uiOutput(ns("jackknife_results")),
     htmltools::tags$p(
       "The detailed nine-sheet scientific-audit workbook remains an internal artifact."))
 }
@@ -690,6 +710,40 @@ fpq_results_server <- function(id, state) {
                               button_label, class = "btn-primary"),
         shiny::actionButton(session$ns("open_results_folder"),
                             "Open Results Folder"))
+    })
+
+    output$jackknife_results <- shiny::renderUI({
+      current <- result()
+      if (!isTRUE(current$available) ||
+          !"Jackknife_Log2FC" %in% (current$validation$sheets %||% character()))
+        return(NULL)
+      frame <- tryCatch(openxlsx::read.xlsx(current$path,
+        sheet = "Jackknife_Log2FC", check.names = FALSE),
+        error = function(e) data.frame())
+      if (!nrow(frame)) return(NULL)
+      stable <- frame$Direction_Stable
+      htmltools::tags$section(class = "fpq-card",
+        htmltools::tags$h3("Jackknife robustness"),
+        htmltools::tags$p(paste("Features analysed:", nrow(frame))),
+        htmltools::tags$p(paste("Matched replicate pairs:",
+          max(frame$N_Jackknife_Requested, na.rm = TRUE))),
+        htmltools::tags$p(paste("Direction stable:",
+          sum(stable %in% TRUE, na.rm = TRUE))),
+        htmltools::tags$p(paste("Direction unstable:",
+          sum(stable %in% FALSE, na.rm = TRUE))),
+        htmltools::tags$details(
+          htmltools::tags$summary("View Jackknife Results"),
+          htmltools::tags$p(
+            "The full-data log2FC remains the primary point estimate."),
+          htmltools::tags$div(class = "table-responsive",
+            htmltools::tags$table(class = "table table-sm",
+              htmltools::tags$thead(htmltools::tags$tr(lapply(
+                names(frame)[seq_len(min(ncol(frame), 12L))],
+                htmltools::tags$th))),
+              htmltools::tags$tbody(lapply(seq_len(min(nrow(frame), 25L)),
+                function(i) htmltools::tags$tr(lapply(
+                  frame[i, seq_len(min(ncol(frame), 12L)), drop = TRUE],
+                  htmltools::tags$td))))))))
     })
 
     shiny::observeEvent(input$open_results_folder, {

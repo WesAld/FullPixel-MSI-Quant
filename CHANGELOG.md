@@ -4,6 +4,17 @@ All notable changes to FullPixel MSI Quant are documented here.
 
 ## [Unreleased]
 
+### V3 jackknife development
+
+- Identifies the application as FullPixel MSI Quant V3 `3.0.0-dev`.
+- Adds an optional, default-off matched biological-replicate-pair jackknife for
+  two-group log2 fold changes across Raw, spectrum-sum, RMS, and Median.
+- Adds deliberate Include/Remove controls, eligibility reporting, project
+  persistence, conditional Results presentation, provenance, and the optional
+  `Jackknife_Log2FC` worksheet.
+- Preserves the full-data log2 fold change, normalization formulas, detection
+  calculations, and hash-locked validated scientific source.
+
 ### V2 normalization development
 
 - Identifies the application as FullPixel MSI Quant V2 `2.0.0-dev`.

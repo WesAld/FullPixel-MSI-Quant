@@ -1,9 +1,9 @@
-# FullPixel MSI Quant V2
+# FullPixel MSI Quant V3
 
-> **Development version:** 2.0.0-dev  
+> **Development version:** 3.0.0-dev
 > **Status:** Technical Validation Candidate; not a final validated release.
 
-**FullPixel MSI Quant V2** is a local R Shiny workflow for selectable raw,
+**FullPixel MSI Quant V3** is a local R Shiny workflow for selectable raw,
 spectrum-sum, RMS, or median quantitative intensity analysis of
 full-pixel MALDI mass spectrometry imaging quantification from aligned MZmine
 features.
@@ -33,6 +33,23 @@ request-driven. The declared coordinate count is checked against the imzML
 coordinates.
 
 ## Scientific method
+
+### Optional biological-replicate jackknife
+
+V3 can add a downstream effect-size robustness analysis to eligible two-group
+projects. It is **off by default** and is enabled deliberately with **Include
+Jackknife Statistics**. The analysis omits each matched biological replicate ID
+from both conditions in turn; MSI pixels are never resampling units. At least
+three matched pairs are required. The selected Raw, spectrum-sum, RMS, or Median
+primary intensities are used directly, without a second normalization.
+
+The ordinary full-data log2 fold change remains the primary effect estimate.
+The optional `Jackknife_Log2FC` worksheet reports each dynamic leave-one-pair-out
+estimate, their mean, the classical jackknife standard error, range, and
+direction stability. An exact-zero full estimate is stable only when every
+valid leave-one-out estimate is also exactly zero. Incomplete per-feature
+jackknife sets retain requested/valid counts and missing summary statistics;
+values are never imputed.
 
 For every valid pixel and target feature:
 

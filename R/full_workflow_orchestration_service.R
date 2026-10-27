@@ -327,10 +327,19 @@ fpq_prepare_mode_extraction_request <- function(
   request$approved_scientific_configuration$primary_normalization_method <-
     request$primary_normalization_method
   request$display_metadata$normalization <- list(
-    application_version = "2.0.0-dev",
+    application_version = "3.0.0-dev",
     primary_normalization_method = request$primary_normalization_method,
     normalization_scale = request$approved_scientific_configuration$normalization_scale,
     normalization_definition_version = fpq_normalization_definition_version())
+  jackknife_design <- fpq_jackknife_design(config)
+  request$display_metadata$jackknife <- list(
+    requested = fpq_jackknife_enabled(config),
+    enabled = fpq_jackknife_enabled(config) && jackknife_design$eligible,
+    eligible = jackknife_design$eligible,
+    resampling_unit = "matched_biological_replicate_pairs",
+    replicate_ids = as.list(jackknife_design$replicate_ids),
+    n_pairs = jackknife_design$n_pairs,
+    eligibility_message = jackknife_design$reason)
   fpq_apply_mass_tolerance_to_request(request, config)
 }
 

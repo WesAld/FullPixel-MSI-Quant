@@ -44,9 +44,9 @@ I_{j,p}^{norm} =
 The denominator is the sum of all stored centroid intensities in the same valid
 pixel. The method is described as **spectrum-sum normalization**.
 
-## V2 selectable primary intensity strategies
+## V3 selectable primary intensity strategies
 
-FullPixel MSI Quant V2 2.0.0-dev retains multiple signal families from the
+FullPixel MSI Quant V3 3.0.0-dev retains multiple signal families from the
 same stored centroid spectra. `primary_normalization_method` selects the family
 used downstream; a missing field resolves to `spectrum_sum` for compatibility.
 
@@ -145,3 +145,24 @@ Rscript .\tools\verify_scientific_core.R
 ```
 
 A changed or missing frozen source blocks scientific execution.
+## Optional matched biological-replicate-pair jackknife
+
+For an eligible two-group comparison with at least three explicitly matched
+biological replicate IDs, V3 can calculate a leave-one-pair-out jackknife after
+the ordinary FullPixel workflow. For each replicate ID, its sample is omitted
+from both groups. Pixels are never treated as replicates. The chosen primary
+intensity family has already been normalized (if applicable) and is not
+normalized again.
+
+Each leave-one-out estimate uses the same complete-replicate group mean,
+positive-denominator rule, missing-value behavior, and
+`log2(mean(comparison) / mean(reference))` formula as the full estimate. For
+`n` matched-pair estimates, the classical standard error is
+`sqrt(((n - 1) / n) * sum((theta_i - mean(theta))^2))`. If any estimate needed
+for a feature is invalid, summary statistics remain missing and requested/valid
+counts expose the incompleteness; no imputation or pseudocount is introduced.
+
+Direction stability requires all estimates to be strictly positive for a
+positive full estimate, strictly negative for a negative full estimate, and
+exactly zero for an exact-zero full estimate. The full-data log2 fold change
+remains the primary point estimate.
