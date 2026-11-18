@@ -77,8 +77,8 @@ fpq_about_server <- function(id, state) {
       integrity <- fpq_verify_scientific_core(state$repository_root)
       htmltools::tags$div(class = "fpq-card-grid",
         htmltools::tags$section(class = "fpq-card",
-          htmltools::tags$h3("FullPixel MSI Quant V3"),
-          htmltools::tags$p("Application version 3.0.0-dev"),
+          htmltools::tags$h3("MALDIPixelQuant"),
+          htmltools::tags$p("Application version 4.0.0-dev"),
           htmltools::tags$p(paste("Package version", as.character(
             utils::packageVersion("FullPixelMSIQuant")))),
           htmltools::tags$p("Scientific-core version 1.0.0"),

@@ -188,7 +188,7 @@ fpq_sample_import_server <- function(id, state) {
         message <- if (result$added) {
           paste(result$added, label, "MSI sample pairs detected")
         } else if (result$duplicates) {
-          "Sample folder already registered — duplicate pairs ignored"
+          "Sample folder already registered - duplicate pairs ignored"
         } else {
           "No valid imzML/IBD pairs were found in the selected folder"
         }
@@ -230,7 +230,7 @@ fpq_sample_import_server <- function(id, state) {
       result <- fpq_append_unique_msi_pairs(state$detected_samples(), rows)
       state$detected_samples(result$rows)
       message <- if (!result$added && result$duplicates)
-        "Sample already added — duplicate ignored" else
+        "Sample already added - duplicate ignored" else
         paste0(result$added, " new samples added; ", result$duplicates,
                " duplicates ignored")
       shiny::showNotification(message, type = if (result$added) "message" else "warning")
@@ -279,7 +279,7 @@ fpq_sample_import_server <- function(id, state) {
       result <- fpq_append_unique_msi_pairs(state$detected_samples(), paired)
       state$detected_samples(result$rows)
       shiny::showNotification(if (result$added) "Sample added" else
-        "Sample already added — duplicate ignored",
+        "Sample already added - duplicate ignored",
         type = if (result$added) "message" else "warning")
     })
     output$review <- DT::renderDT({

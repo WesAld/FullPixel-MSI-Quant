@@ -31,7 +31,7 @@ class AllFeaturesComparisonAdapterTests(unittest.TestCase):
                    "_MEDIAN_normalized_intensity"),
     }
 
-    def make_source(self, directory, intensity_sheet):
+    def make_source(self, directory, intensity_sheet, method):
         path = directory / "source.xlsx"
         workbook = Workbook()
         workbook.remove(workbook.active)
@@ -42,6 +42,7 @@ class AllFeaturesComparisonAdapterTests(unittest.TestCase):
             if name == "README":
                 worksheet.append(["Reference condition", "CTRL"])
                 worksheet.append(["Comparison condition", "TRT"])
+                worksheet.append(["Primary normalization method", method])
             else:
                 worksheet.append(["x", 1])
         workbook.save(path)
@@ -68,7 +69,7 @@ class AllFeaturesComparisonAdapterTests(unittest.TestCase):
     def run_adapter(self, method, intensity_sheet, output_name="output"):
         temporary = tempfile.TemporaryDirectory()
         directory = Path(temporary.name)
-        source = self.make_source(directory, intensity_sheet)
+        source = self.make_source(directory, intensity_sheet, method)
         master = self.make_master(directory)
         request = {
             "workflow_id": "workflow-test",
@@ -116,9 +117,14 @@ class AllFeaturesComparisonAdapterTests(unittest.TestCase):
                          "QC", "README"])
                     headers = [cell.value for cell in next(
                         workbook[all_features].iter_rows(min_row=1, max_row=1))]
+                    readme = {row[0].value: row[1].value for row in
+                              workbook["README"].iter_rows(min_row=1,
+                                                           max_col=2)}
                     workbook.close()
                     self.assertIn("CTRL_R1" + suffix, headers)
                     self.assertIn("mean_CTRL" + suffix, headers)
+                    self.assertEqual(readme["Primary normalization method"],
+                                     method)
                     if method != "spectrum_sum":
                         self.assertNotIn("TIC_normalized_intensity",
                                          " ".join(headers))

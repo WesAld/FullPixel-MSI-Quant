@@ -29,7 +29,7 @@ fpq_workflow_stage_names <- function() c(
   summarizing = "Summarizing replicate readouts",
   annotating = "Integrating MZmine annotations",
   combined_export = "Creating combined publication export",
-  final_workbook = "Creating final five-sheet workbook",
+  final_workbook = "Creating final Excel workbook",
   validating_workbook = "Validating final workbook")
 
 fpq_new_workflow_stages <- function(modes) {
@@ -147,7 +147,7 @@ fpq_write_raw_hash_registry <- function(project, workflow_id, mode, samples) {
     list(role = paste0(sample$sample_id, "_IBD"),
       path = sample$ibd_path, sha256 = fpq_hash_file(sample$ibd_path)))),
     recursive = FALSE)
-  path <- file.path(project$root, "runs", workflow_id, "requests",
+  path <- file.path(fpq_project_paths(project$root)$runs, workflow_id, "requests",
                     paste0(tolower(mode), "-raw-input-hashes.json"))
   fpq_atomic_write_json(list(schema_version = "1.0.0", files = files), path)
   list(path = normalizePath(path, winslash = "/"),
@@ -281,7 +281,7 @@ fpq_prepare_mode_extraction_request <- function(
     artifact_id = paste0("art-", token, "-mzmine"),
     path = normalizePath(mzmine$path, winslash = "/"),
     sha256 = fpq_hash_file(mzmine$path))
-  request$output_working_directory <- file.path(project$root, "runs",
+  request$output_working_directory <- file.path(fpq_project_paths(project$root)$runs,
     workflow_id, "scientific-output", tolower(mode), "extract")
   request$conditions <- list(
     list(condition_id = "CTRL", analytical_role = "reference",
@@ -327,7 +327,7 @@ fpq_prepare_mode_extraction_request <- function(
   request$approved_scientific_configuration$primary_normalization_method <-
     request$primary_normalization_method
   request$display_metadata$normalization <- list(
-    application_version = "3.0.0-dev",
+    application_version = "4.0.0-dev",
     primary_normalization_method = request$primary_normalization_method,
     normalization_scale = request$approved_scientific_configuration$normalization_scale,
     normalization_definition_version = fpq_normalization_definition_version())
@@ -344,7 +344,7 @@ fpq_prepare_mode_extraction_request <- function(
 }
 
 fpq_request_path <- function(project, workflow_id, request) {
-  path <- file.path(project$root, "runs", workflow_id, "requests",
+  path <- file.path(fpq_project_paths(project$root)$runs, workflow_id, "requests",
                     paste0(request$run_id, ".json"))
   fpq_atomic_write_json(request, path)
   normalizePath(path, winslash = "/")
@@ -373,7 +373,7 @@ fpq_prepare_full_workflow <- function(project, config, validations,
     exposure = fpq_project_exposure_label(project, config),
     created_at = fpq_now(), updated_at = fpq_now(), started_at = NULL,
     finished_at = NULL, current_stage = "preparing",
-    output_folder = file.path(project$root, "runs", workflow_id),
+    output_folder = file.path(fpq_project_paths(project$root)$runs, workflow_id),
     validation_snapshot_hash = if (file.exists(
       fpq_project_paths(project$root)$validations))
       fpq_hash_file(fpq_project_paths(project$root)$validations) else NULL,
@@ -537,7 +537,7 @@ fpq_copy_workflow_acknowledgement <- function(project, workflow, run_id) {
     return(invisible(NULL))
   acknowledgement$run_id <- run_id
   acknowledgement$workflow_id <- workflow$workflow_id
-  path <- file.path(project$root, "reports",
+  path <- file.path(fpq_project_paths(project$root)$reports,
                     paste0(run_id, "-candidate-acknowledgement.json"))
   fpq_atomic_write_json(acknowledgement, path)
   invisible(path)
@@ -583,7 +583,7 @@ fpq_run_pvl_script07_and_presentation <- function(project, workflow, masters,
   audit <- report$candidate_workbook$path
   final_dir <- file.path(workflow$output_folder, "results")
   final_path <- file.path(final_dir, paste0("PVL_", workflow$exposure,
-    "_MALDI_MSI_Final_Results_TECHNICAL_VALIDATION_CANDIDATE.xlsx"))
+    "_MALDIPixelQuant_Final_Results.xlsx"))
   fpq_create_final_results_workbook(audit, final_path,
     current_source_files = c(masters$POS$path, masters$NEG$path, audit),
     exposure = workflow$exposure)
@@ -605,7 +605,7 @@ fpq_run_pvl_script07_and_presentation <- function(project, workflow, masters,
     scientific_profile_id = project$manifest$scientific_profile_id,
     scientific_core_version = project$manifest$scientific_core_version,
     parent_artifact_ids = lapply(masters, `[[`, "artifact_id"),
-    notes = "Five-sheet presentation contract PASS; Technical Validation Candidate"),
+    notes = "Validated final workbook presentation contract PASS"),
     activate = TRUE)
   list(path = final_path, sha256 = artifact$sha256,
        artifact_id = artifact$artifact_id, audit_workbook = audit,
@@ -684,9 +684,8 @@ fpq_run_generic_export <- function(project, workflow, masters,
       project$manifest$scientific_core_version,
     parent_artifact_ids = lapply(masters, `[[`, "artifact_id"),
     notes = paste(
-      "Generic two-group five-sheet workbook;",
-      "dynamic sample, condition, mode, project, and exposure labels;",
-      "Technical Validation Candidate"
+      "Validated generic two-group final workbook;",
+      "dynamic sample, condition, mode, project, and exposure labels"
     )), activate = TRUE)
   list(path = final_path, sha256 = artifact$sha256,
        artifact_id = artifact$artifact_id,

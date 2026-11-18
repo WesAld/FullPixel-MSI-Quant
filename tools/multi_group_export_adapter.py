@@ -852,10 +852,10 @@ def main() -> int:
                 "<= 1e-10",
             ],
             [
-                "technical_validation_classification",
-                "WARNING",
-                "Technical Validation Candidate",
-                "dataset-specific multi-group oracle not supplied",
+                "validated_workflow_output",
+                "PASS",
+                "Validated final workbook",
+                "validated export contract",
             ],
         ]
         for audit in audits:
@@ -903,7 +903,7 @@ def main() -> int:
                     f"{label}={count}"
                     for label, count in replicate_counts.items()
                 ),
-                "3.0.0-dev",
+                "4.0.0-dev",
                 method,
                 normalization["normalization_definition_version"],
                 normalization["normalization_definition"],
@@ -923,7 +923,7 @@ def main() -> int:
                     "Original canonical MZmine annotation scores and "
                     "additional annotation fields are retained"
                 ),
-                "Technical Validation Candidate",
+                "Validated workflow output",
             ],
         })
         tables["QC"] = qc
@@ -945,9 +945,8 @@ def main() -> int:
             "Exposure",
         )
         filename = (
-            f"{project_token}_{exposure_token}_MALDI_MSI_"
-            "Multi_Group_Final_Results_"
-            "TECHNICAL_VALIDATION_CANDIDATE.xlsx"
+            f"{project_token}_{exposure_token}_MALDIPixelQuant_"
+            "Multi_Group_Final_Results.xlsx"
         )
         workbook_path = output_directory / filename
 

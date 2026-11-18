@@ -86,6 +86,11 @@ fpq_design_ui <- function(id) {
 
 fpq_design_server <- function(id, state) {
   shiny::moduleServer(id, function(input, output, session) {
+    output$advanced_demo_control <- shiny::renderUI({
+      if (!isTRUE(state$advanced_mode())) return(NULL)
+      shiny::actionButton(session$ns("load_demo"),
+        "Load Synthetic Demonstration")
+    })
     shiny::observe({
       settings <- fpq_mass_tolerance_settings(state$configuration())
       shiny::updateRadioButtons(

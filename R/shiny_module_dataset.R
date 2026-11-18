@@ -148,11 +148,89 @@ fpq_inspect_annotation_table <- function(path, mappings = list()) {
     sha256 = fpq_hash_file(path), records = records)
 }
 
+fpq_v4_dataset_sync_snapshot <- function(config, mode = "NEG") {
+  mode <- toupper(mode %||% "NEG")
+  samples <- Filter(function(x) identical(toupper(x$ion_mode %||% ""), mode),
+    config$samples %||% list())
+  mzmine <- (config$mzmine_registrations %||% list())[[mode]] %||% list()
+  list(mode = mode, samples = samples,
+    pair_lines = vapply(samples, function(x) paste(
+      x$sample_id %||% x$sample_label %||% "sample",
+      x$imzml_path %||% "", x$ibd_path %||% "", sep = " | "), character(1)),
+    mzmine = mzmine, mzmine_path = mzmine$path %||% "",
+    feature_id = mzmine$mappings$feature_id %||% "id",
+    target_mz = mzmine$mappings$mz %||% "mz",
+    matrix = if (identical(mode, "POS")) config$positive_matrix %||% "DHB"
+      else config$negative_matrix %||% "9AA")
+}
+
 fpq_dataset_server <- function(id, state) {
   shiny::moduleServer(id, function(input, output, session) {
     inspection <- shiny::reactiveVal(NULL)
     annotation_inspection <- shiny::reactiveVal(NULL)
     registration <- shiny::reactiveVal(NULL)
+    sync_from_authoritative <- function(mode = input$ion_mode %||% "NEG") {
+      config <- state$configuration()
+      snapshot <- fpq_v4_dataset_sync_snapshot(config, mode)
+      mode <- snapshot$mode; pair_lines <- snapshot$pair_lines
+      mzmine_path <- snapshot$mzmine_path
+      feature_id <- snapshot$feature_id; target_mz <- snapshot$target_mz
+
+      shiny::updateTextInput(session, "dataset_id", value = paste0(
+        config$dataset_id %||% "dset-project-configuration", "-", tolower(mode)))
+      shiny::updateTextInput(session, "dataset_name",
+        value = paste(tools::toTitleCase(tolower(mode)), "registered full-pixel dataset"))
+      shiny::updateTextInput(session, "exposure", value = config$exposure_label %||% "Single")
+      shiny::updateTextInput(session, "matrix", value = snapshot$matrix)
+      shiny::updateTextInput(session, "pixel_size",
+        value = as.character(config$pixel_size_um %||% 40))
+      shiny::updateTextInput(session, "coordinates",
+        value = as.character(config$expected_coordinate_count %||% 1600))
+      shiny::updateTextAreaInput(session, "pairs", value = paste(pair_lines, collapse = "\n"))
+      shiny::updateTextInput(session, "target_path", value = mzmine_path)
+      shiny::updateTextInput(session, "annotation_path", value = mzmine_path)
+
+      if (nzchar(mzmine_path) && file.exists(mzmine_path)) {
+        target <- fpq_inspect_target_table(mzmine_path, feature_id, target_mz)
+        inspection(target)
+        shiny::updateSelectInput(session, "feature_id_column",
+          choices = target$columns, selected = feature_id)
+        shiny::updateSelectInput(session, "target_mz_column",
+          choices = target$columns, selected = target_mz)
+        annotation_defaults <- list(feature_id = feature_id, mz = target_mz,
+          annotation_name = "preferred_annotation:compound_name",
+          formula = "preferred_annotation:mol_formula",
+          adduct = "preferred_annotation:adduct", score = "preferred_annotation:score",
+          compound_score = "preferred_annotation:compound_annotation_score",
+          database = "preferred_annotation:database_name")
+        annotation_inspection(fpq_inspect_annotation_table(mzmine_path,
+          annotation_defaults))
+        ids <- c(feature_id="ann_feature_id", mz="ann_mz",
+          annotation_name="ann_name", formula="ann_formula", adduct="ann_adduct",
+          score="ann_score", compound_score="ann_compound_score",
+          database="ann_database")
+        for (role in names(ids)) shiny::updateSelectInput(session, ids[[role]],
+          choices = c("Select explicitly" = "", target$columns),
+          selected = annotation_defaults[[role]])
+      } else {
+        inspection(NULL); annotation_inspection(NULL)
+      }
+      invisible(NULL)
+    }
+    shiny::observeEvent(state$configuration(), {
+      config <- state$configuration()
+      modes <- config$enabled_ion_modes %||% unique(vapply(
+        config$samples %||% list(), function(x) x$ion_mode %||% "", character(1)))
+      modes <- intersect(c("NEG", "POS"), toupper(modes[nzchar(modes)]))
+      if (!length(modes)) modes <- toupper(config$ion_mode %||% "NEG")
+      selected <- if ((input$ion_mode %||% "") %in% modes) input$ion_mode else modes[[1]]
+      shiny::updateSelectInput(session, "ion_mode",
+        choices = stats::setNames(modes,
+          paste(tools::toTitleCase(tolower(modes)), "mode")), selected = selected)
+      sync_from_authoritative(selected)
+    }, ignoreInit = FALSE)
+    shiny::observeEvent(input$ion_mode, sync_from_authoritative(input$ion_mode),
+      ignoreInit = TRUE)
     shiny::observeEvent(input$inspect_target, {
       tryCatch({
         x <- fpq_inspect_target_table(input$target_path)
@@ -283,22 +361,24 @@ fpq_dataset_server <- function(id, state) {
             "Annotated-list registration is blocked until every mapping and source validation passes.",
             "input")
         config <- state$configuration()
-        config$schema_version <- "1.0.0"; config$dataset_id <- input$dataset_id
-        config$dataset_name <- input$dataset_name; config$ion_mode <- input$ion_mode
-        config$exposure_label <- input$exposure
-        config$raw_data_pairs <- fpq_parse_pair_assignments(input$pairs)
-        config$aligned_feature_list <- list(path = input$target_path,
-          path_type = "external_absolute")
-        config$annotated_feature_list <- if (nzchar(input$annotation_path))
-          list(path = input$annotation_path, path_type = "external_absolute") else NULL
-        config$acquisition_metadata <- list(matrix = input$matrix,
-          pixel_size_um = as.numeric(input$pixel_size),
-          expected_coordinate_count = as.integer(input$coordinates))
-        config$column_mappings <- list(feature_id = input$feature_id_column,
-          target_mz = input$target_mz_column, annotation = annotation_mappings())
-        project <- fpq_register_dataset(project, config)
-        state$project(project); state$configuration(config); state$dirty(FALSE)
-        registration(list(status = "PASS", message = "Dataset registered by exact paths and hashes."))
+        mode <- toupper(input$ion_mode %||% "NEG")
+        authoritative <- (config$mzmine_registrations %||% list())[[mode]]
+        if (is.null(authoritative) || !identical(
+            normalizePath(authoritative$path, winslash = "/", mustWork = FALSE),
+            normalizePath(input$target_path, winslash = "/", mustWork = FALSE)))
+          fpq_stop("dataset.mapping_source_mismatch",
+            "Technical mappings must use the MZmine file registered for the selected ion mode.",
+            "input")
+        mappings <- config$technical_column_mappings %||% list()
+        mappings[[mode]] <- list(feature_id = input$feature_id_column,
+          target_mz = input$target_mz_column, annotation = annotation_mappings(),
+          source_path = authoritative$path,
+          source_sha256 = authoritative$sha256 %||% NULL)
+        config$technical_column_mappings <- mappings
+        fpq_persist_msi_configuration(project, config)
+        state$configuration(config); state$dirty(FALSE)
+        registration(list(status = "PASS", message = paste(mode,
+          "technical mappings saved; MSI and MZmine registrations remain authoritative.")))
       }, error = function(e) {
         state$last_error(e); registration(list(status = "FAIL", message = conditionMessage(e)))
       })

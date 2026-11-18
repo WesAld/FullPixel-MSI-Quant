@@ -1,11 +1,18 @@
 # Loaded after existing workflow extensions. Adds only the optional V3
 # downstream biological-replicate jackknife workbook layer.
 
+fpq_jackknife_analysis_type <- function(workflow = list(), config = list(),
+                                        manifest = list()) {
+  workflow$analysis_type %||% config$analysis_type %||%
+    manifest$project_preferences$analysis_type %||% ""
+}
+
 fpq_add_jackknife_workbook <- function(project, workflow, masters, result,
                                        repository_root, attempt_id = NULL) {
-  if (!identical(workflow$analysis_type %||% "", "compare_two_groups"))
-    return(result)
   config <- fpq_load_project_configuration(project)
+  analysis_type <- fpq_jackknife_analysis_type(workflow, config,
+    project$manifest)
+  if (!identical(analysis_type, "compare_two_groups")) return(result)
   design <- fpq_jackknife_design(config)
   requested <- fpq_jackknife_enabled(config)
   # A design that became ineligible after configuration must not block the
@@ -13,7 +20,7 @@ fpq_add_jackknife_workbook <- function(project, workflow, masters, result,
   enabled <- requested && isTRUE(design$eligible)
 
   token <- format(Sys.time(), "%Y%m%d%H%M%S")
-  output_directory <- file.path(project$root, "results",
+  output_directory <- file.path(fpq_project_paths(project$root)$results,
     paste0("jackknife-", token))
   metadata <- fpq_all_features_build_display_metadata(project, workflow, masters)
   request <- list(

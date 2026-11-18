@@ -15,12 +15,18 @@ test_that("Shiny application and navigation UIs construct successfully", {
     as.character(fpq_provenance_ui("provenance")),
     as.character(fpq_about_ui("about")))
   html <- paste(fragments, collapse = "\n")
-  for (label in c("Create New Project", "Open Existing Project", "Add Condition",
+  home_source <- paste(deparse(body(fpq_home_server)), collapse = "\n")
+  for (label in c("Create New Project", "Open Existing Project"))
+    expect_match(home_source, label, fixed = TRUE)
+  for (label in c("Add Condition",
                   "Add Treatment", "Add Replicate", "Add Comparison",
-                  "Dataset Registration", "Scientific validation details",
-                  "Validation Center", "Workflow", "Runs", "Artifacts",
-                  "Logs", "Provenance", "Settings and About"))
+                  "Files and Columns", "Scientific validation details",
+                  "Validation", "Workflow", "Run History", "Artifacts",
+                  "Logs", "Provenance", "MALDIPixelQuant"))
     expect_match(html, label, fixed = TRUE)
+  sidebar <- htmltools::renderTags(fpq_v4_sidebar())$html
+  expect_match(sidebar, "MALDIPixelQuant", fixed = TRUE)
+  expect_match(sidebar, "Run History", fixed = TRUE)
 })
 
 test_that("no-project module states are safe", {
@@ -47,7 +53,7 @@ test_that("project UI creates, opens and restores a project", {
     session$flushReact()
     session$setInputs(create = 1); session$flushReact()
     expect_identical(state$project()$manifest$project_id, "prj-shiny-test")
-    expect_true(file.exists(file.path(root, "project.json")))
+    expect_true(file.exists(fpq_project_paths(root)$manifest))
   })
   restarted <- fpq_new_app_state(normalizePath("."))
   shiny::testServer(fpq_project_server, args = list(state = restarted), {

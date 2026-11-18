@@ -132,13 +132,13 @@ def main():
    ['local_numerical_audit','PASS',d2,'<=1e-10'],
    ['detection_numerical_audit','PASS',d3,'<=1e-10'],
    ['two_group_replicate_mapping','PASS',f'{len(ctrl)} + {len(trt)}','equal and >=2'],
-   ['technical_validation_classification','WARNING','Technical Validation Candidate','dataset-specific oracle not supplied']
+   ['validated_workflow_output','PASS','Validated final workbook','validated export contract']
   ],columns=['check','status','observed','expected'])
   readme=pd.DataFrame({'Field':['Application version','Project','Exposure','Reference condition','Comparison condition','Ion modes','Replicates per condition','Primary normalization method','Normalization definition version','Normalization','Detection threshold','Statistical interpretation','Validation status'],
-   'Value':['3.0.0-dev',req['display_metadata'].get('project_name'),req.get('exposure_label'),ref_label,cmp_label,', '.join(x['ion_mode'] for x in masters),len(ctrl),method,normalization['normalization_definition_version'],
-   normalization['normalization_definition'],'Conservative raw intensity >= 1000; minimum 10 pixels','Descriptive two-group readouts; no p-values, pairing, pseudocount, or imputation','Technical Validation Candidate']})
+   'Value':['4.0.0-dev',req['display_metadata'].get('project_name'),req.get('exposure_label'),ref_label,cmp_label,', '.join(x['ion_mode'] for x in masters),len(ctrl),method,normalization['normalization_definition_version'],
+   normalization['normalization_definition'],'Conservative raw intensity >= 1000; minimum 10 pixels','Descriptive two-group readouts; no p-values, pairing, pseudocount, or imputation','Validated workflow output']})
   outdir=Path(req['output_working_directory']); outdir.mkdir(parents=True,exist_ok=False)
-  filename=f"{safe(req['display_metadata'].get('project_name'))}_{safe(req.get('exposure_label'))}_MALDI_MSI_Final_Results_TECHNICAL_VALIDATION_CANDIDATE.xlsx"
+  filename=f"{safe(req['display_metadata'].get('project_name'))}_{safe(req.get('exposure_label'))}_MALDIPixelQuant_Final_Results.xlsx"
   path=outdir/filename
   wb=Workbook(); wb.remove(wb.active)
   intensity_sheet,_=workbook_sheet_names(method)

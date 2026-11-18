@@ -148,13 +148,20 @@ fpq_save_configuration <- function(project, kind, id, value, validator = NULL,
   if (!is.null(value$schema_version) && !identical(value$schema_version, "1.0.0"))
     fpq_stop("configuration.schema_version", "Unsupported schema version.")
   if (!is.null(validator)) validator(value)
-  path <- file.path(project$root, "config", kind, paste0(id, ".json"))
+  paths <- fpq_project_paths(project$root)
+  directory <- switch(kind, datasets = paths$datasets,
+                      runs = paths$run_configurations,
+                      snapshots = paths$snapshots)
+  path <- file.path(directory, paste0(id, ".json"))
   fpq_atomic_write_json(value, path, validator, simulate_interrupt)
   updated <- fpq_save_project(project, list())
   list(path = path, sha256 = fpq_hash_file(path), project = updated)
 }
 fpq_load_configuration <- function(project, kind, id)
-  fpq_read_json(file.path(project$root, "config", kind, paste0(id, ".json")))
+  fpq_read_json(file.path(switch(kind,
+    datasets = fpq_project_paths(project$root)$datasets,
+    runs = fpq_project_paths(project$root)$run_configurations,
+    snapshots = fpq_project_paths(project$root)$snapshots), paste0(id, ".json")))
 
 fpq_add_condition <- function(config, condition) {
   config$conditions <- c(config$conditions %||% list(), list(condition))

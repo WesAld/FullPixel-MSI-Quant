@@ -13,8 +13,14 @@ fpq_profile_server <- function(id, state) {
           state$project()$manifest$scientific_profile_id
       resolved <- fpq_resolve_profile(profile_id, state$repository_root)
       p <- resolved$profile
-      locked <- if (is.list(p$override_policy))
-        p$override_policy$locked %||% character() else p$override_policy
+      locked <- if (!is.null(p$locked_scientific_settings)) {
+        unlist(p$locked_scientific_settings, recursive = TRUE, use.names = TRUE)
+      } else if (is.list(p$override_policy)) {
+        p$override_policy$locked %||% p$override_policy$locked_fields %||% character()
+      } else p$override_policy
+      locked_labels <- if (length(locked)) {
+        paste0(gsub("\\.", " ", names(locked)), ": ", as.character(locked))
+      } else "No profile-specific locked settings were declared."
       htmltools::tags$div(class = "fpq-card-grid",
         htmltools::tags$section(class = "fpq-card", htmltools::tags$h3(p$profile_id),
           htmltools::tags$p(paste("Version", p$profile_version)),
@@ -24,7 +30,7 @@ fpq_profile_server <- function(id, state) {
             htmltools::tags$p(paste(resolved$requested_id, "->", resolved$resolved_id))),
         htmltools::tags$section(class = "fpq-card",
           htmltools::tags$h3("Locked scientific settings"),
-          htmltools::tags$ul(lapply(locked, htmltools::tags$li)),
+          htmltools::tags$ul(lapply(locked_labels, htmltools::tags$li)),
           htmltools::tags$p("Locked settings are inspectable but not editable.")),
         htmltools::tags$section(class = "fpq-card",
           htmltools::tags$h3("Scientific status"),
@@ -84,8 +90,7 @@ fpq_validation_server <- function(id, state) {
         result <- list(structural = structural, registration = registration,
           profile = compatibility, environment = environment, records = records,
           readiness = if (blocking) "blocked" else
-            if (compatibility$classification == "profile_candidate_compatible" ||
-                environment$status == "compatible_with_warning")
+            if (environment$status == "compatible_with_warning")
               "ready_with_warning" else "ready")
         state$validations(result)
         if (!is.null(state$project()))
@@ -108,41 +113,44 @@ fpq_validation_server <- function(id, state) {
       if (!length(x)) return(fpq_empty_state("Not yet validated",
         "Structural validity and profile compatibility will be displayed separately."))
       htmltools::tags$div(class = "fpq-card-grid",
-        htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("1. Structural Configuration"),
+        htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("1. Project structure"),
           fpq_badge(if (x$structural$classification == "structurally_valid") "PASS" else "FAIL",
-                    x$structural$classification)),
-        htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("2. Dataset Registration"),
+                    if (x$structural$classification == "structurally_valid") "Passed" else "Action required")),
+        htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("2. Data registration"),
           {
             fpq_badge(if (!x$registration$blocking) "PASS" else "FAIL",
-                      if (!x$registration$blocking) "Registered" else
-                        paste(x$registration$missing, collapse = " "))
-          }),
-        htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("3. Profile Compatibility"),
-          fpq_badge(if (x$profile$classification == "profile_compatible") "PASS" else
-              if (x$profile$classification == "profile_candidate_compatible") "WARNING" else "FAIL",
-                    if (x$profile$classification == "profile_candidate_compatible")
-                      "Compatible with scientific-review warning" else
-                        x$profile$classification),
-          if (identical(x$profile$scientific_status$overall,
-                        "technical_validation_candidate"))
-            fpq_badge("WARNING", "Technical Validation Candidate"),
-          if (!is.null(x$profile$scientific_status))
-            htmltools::tags$ul(
-              lapply(names(x$profile$scientific_status$branches), function(name)
-                htmltools::tags$li(paste(gsub("_", " ", name), ":",
-                  x$profile$scientific_status$branches[[name]])))),
-          if (identical(x$profile$scientific_status$independent_positive_review,
-                        "pending"))
-            htmltools::tags$p("Independent Positive scientific review: pending.")),
-        htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("4. Environment"),
-          fpq_badge(if (x$environment$status == "incompatible") "FAIL" else "WARNING",
-                    x$environment$status)),
-        htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("5. Pre-execution Readiness"),
+                      if (!x$registration$blocking) "Passed" else "Action required")
+          },
+          if (x$registration$blocking) htmltools::tagList(
+            htmltools::tags$p(paste(x$registration$missing, collapse = " ")),
+            shiny::actionButton(session$ns("go_msi"), "Go to MSI Samples"),
+            shiny::actionButton(session$ns("go_mzmine"), "Go to MZmine Feature List"))),
+        htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("3. Analysis compatibility"),
+          fpq_badge(if (x$profile$classification %in%
+              c("profile_compatible", "profile_candidate_compatible")) "PASS" else "FAIL",
+                    if (x$profile$classification %in%
+                      c("profile_compatible", "profile_candidate_compatible"))
+                      "Passed" else "Action required"),
+          if (x$profile$classification %in% c("profile_incompatible", "profile_unsupported", "profile_blocked"))
+            shiny::actionButton(session$ns("go_configuration"),
+              "Review Dataset Configuration")),
+        htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("4. Software environment"),
+          fpq_badge(if (x$environment$status == "incompatible") "FAIL" else
+              if (x$environment$status == "compatible") "PASS" else "WARNING",
+                    if (x$environment$status == "incompatible") "Action required" else
+                      if (x$environment$status == "compatible") "Passed" else "Passed with warning")),
+        htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("5. Ready to run"),
           fpq_badge(if (x$readiness == "blocked") "FAIL" else
               if (x$readiness == "ready_with_warning") "WARNING" else "PASS",
             switch(x$readiness, ready_with_warning = "Ready with warning",
               ready = "Ready", "Blocked"))))
     })
+    shiny::observeEvent(input$go_msi,
+      fpq_v4_navigate(session$rootScope(), "msi_samples"))
+    shiny::observeEvent(input$go_mzmine,
+      fpq_v4_navigate(session$rootScope(), "mzmine"))
+    shiny::observeEvent(input$go_configuration,
+      fpq_v4_navigate(session$rootScope(), "dataset_configuration"))
     output$records <- DT::renderDT({
       x <- state$validations(); if (!length(x)) return(data.frame())
       records <- Filter(function(r) r$status %in% input$statuses,
@@ -171,7 +179,14 @@ fpq_workflow_server <- function(id, state) {
     latest_workflow <- shiny::reactive({
       shiny::invalidateLater(1000, session)
       if (is.null(state$project())) return(NULL)
-      fpq_workflow_stage_summary(state$project())
+      workflows <- fpq_list_workflow_records(state$project())
+      if (!length(workflows)) return(NULL)
+      selected_id <- state$workflow_id()
+      if (!is.null(selected_id) && nzchar(selected_id)) {
+        selected <- Filter(function(x) identical(x$workflow_id, selected_id), workflows)
+        if (length(selected)) return(selected[[1]])
+      }
+      workflows[[1]]
     })
     validation_ready <- shiny::reactive({
       value <- state$validations()
@@ -240,7 +255,8 @@ fpq_workflow_server <- function(id, state) {
     shiny::observeEvent(input$run_full, {
       if (!validation_ready() || run_active()) return()
       scientific <- state$validations()$profile$scientific_status
-      if (identical(scientific$overall, "technical_validation_candidate")) {
+      if (isTRUE(state$advanced_mode()) &&
+          identical(scientific$overall, "technical_validation_candidate")) {
         shiny::showModal(shiny::modalDialog(
           if (identical(state$analysis_type(), "quantify_only"))
             "This per-sample workflow passed technical validation. It will export individual normalized-intensity and detection readouts without group statistics, and results will be labelled as a Technical Validation Candidate. Continue?"
@@ -356,9 +372,8 @@ fpq_workflow_server <- function(id, state) {
           htmltools::tags$dt("Started"),
           htmltools::tags$dd(workflow$started_at %||% "Not started"),
           htmltools::tags$dt("Current stage"),
-          htmltools::tags$dd(workflow$current_stage),
-          htmltools::tags$dt("Candidate status"),
-          htmltools::tags$dd(workflow$scientific_status),
+          htmltools::tags$dd(fpq_v4_workflow_stage_name(
+            workflow$current_stage, workflow$current_stage)),
           htmltools::tags$dt("Output folder"),
           htmltools::tags$dd(workflow$output_folder)),
         if (workflow$status %in% c("prepared", "starting", "running"))
@@ -375,14 +390,14 @@ fpq_workflow_server <- function(id, state) {
             if (resume_available) "Resume Failed Run" else "Retry Failed Run",
             class = "btn-primary")
         },
-        if (identical(workflow$status, "completed"))
+        if (identical(workflow$status, "completed") &&
+            isTRUE(state$advanced_mode()))
           shiny::actionButton(session$ns("open_results"), "Open Results",
                               class = "btn-primary"),
         shiny::actionButton(session$ns("view_details"), "View Run Details"))
     })
     shiny::observeEvent(input$open_results, {
-      shiny::updateNavbarPage(session$rootScope(), "main_navigation",
-                              selected = "Results")
+      fpq_v4_navigate(session$rootScope(), "results_internal")
     })
     output$progress <- shiny::renderUI({
       workflow <- latest_workflow()
@@ -395,7 +410,8 @@ fpq_workflow_server <- function(id, state) {
               if (stage$status == "failed") "FAIL" else
                 if (stage$status %in% c("running", "cancelled")) "WARNING" else
                   "neutral", tools::toTitleCase(stage$status)),
-            htmltools::tags$span(stage$display_name),
+            htmltools::tags$span(fpq_v4_workflow_stage_name(
+              stage$stage_id %||% stage$id, stage$display_name)),
             if (!is.null(stage$message))
               htmltools::tags$span(class = "fpq-help", stage$message)))))
     })
@@ -403,7 +419,7 @@ fpq_workflow_server <- function(id, state) {
       config <- state$configuration()
       stages <- list(
         list(id = "extract_pixel_intensities", name = "Extract Pixel Intensities",
-          purpose = "Extract and spectrum-sum-normalize target signals across complete full-pixel images."),
+          purpose = "Extract target signals across complete full-pixel images."),
         list(id = "summarize_replicate_readouts", name = "Summarize Replicate Readouts",
           purpose = "Create official biological-replicate readouts."),
         list(id = "integrate_mzmine_annotations", name = "Integrate MZmine Annotations",
@@ -416,6 +432,11 @@ fpq_workflow_server <- function(id, state) {
         executable <- status$executable
         display_status <- status$status
         display_reason <- status$reason
+        if (!isTRUE(state$advanced_mode()) &&
+            identical(display_status, "candidate_workflow_ready")) {
+          display_status <- "ready"
+          display_reason <- "Ready"
+        }
         if (stage$id == "summarize_replicate_readouts" &&
             !is.null(state$project()) && executable) {
           artifacts <- fpq_list_artifacts(state$project())
@@ -488,7 +509,7 @@ fpq_workflow_server <- function(id, state) {
             all(required_modes %in% modes)
           if (length(final)) {
             display_status <- "completed"
-            display_reason <- "Validated final five-sheet workbook is active."
+            display_reason <- "Validated final workbook is available."
           } else if (!masters_ready) {
             executable <- FALSE
             display_status <- "waiting_for_annotation_integration"

@@ -1,7 +1,7 @@
 test_that("project lifecycle is persistent and transactional", {
   root <- tempfile("fpq-project-")
   project <- fpq_create_project(root, "prj-test-project", "Test project")
-  expect_true(file.exists(file.path(root, "project.json")))
+  expect_true(file.exists(fpq_project_paths(root)$manifest))
   expect_identical(fpq_open_project(root)$manifest$project_id, "prj-test-project")
   expect_error(fpq_create_project(root, "prj-other-project", "Duplicate"),
                class = "fpq_configuration_error")

@@ -70,7 +70,7 @@ fpq_prepare_validated_negative_request <- function(project, config, mzmine,
   template$registered_inputs$aligned_target_table <- list(
     artifact_id = paste0("art-mzmine-neg-", token), path = mzmine$path,
     sha256 = fpq_hash_file(mzmine$path))
-  template$output_working_directory <- file.path(project$root, "runs",
+  template$output_working_directory <- file.path(fpq_project_paths(project$root)$runs,
     template$run_id, "scientific-output")
   template$conditions <- list(
     list(condition_id = "CTRL", analytical_role = "reference"),

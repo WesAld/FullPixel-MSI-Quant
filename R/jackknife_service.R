@@ -74,14 +74,14 @@ fpq_jackknife_design <- function(config = list()) {
 }
 
 fpq_jackknife_ui <- function(ns, config, enabled = fpq_jackknife_enabled(config),
-                             prefix = "") {
+                             prefix = "", show_section_heading = TRUE) {
   design <- fpq_jackknife_design(config)
   pair_items <- lapply(design$matched_pairs, function(pair)
     htmltools::tags$li(paste0(pair$replicate_id, ": ",
       pair$reference_condition_id, " ", pair$replicate_id, " ↔ ",
       pair$comparison_condition_id, " ", pair$replicate_id)))
   htmltools::tags$section(class = "fpq-review fpq-jackknife",
-    htmltools::tags$h3("Statistical analyses"),
+    if (isTRUE(show_section_heading)) htmltools::tags$h3("Statistical analyses"),
     htmltools::tags$h4("Jackknife robustness analysis",
       if (isTRUE(enabled)) fpq_badge("PASS", "ENABLED")),
     htmltools::tags$p(

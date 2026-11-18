@@ -9,6 +9,20 @@ test_that("jackknife defaults off and persists explicitly", {
   expect_false(fpq_jackknife_enabled(fpq_set_jackknife_enabled(config, FALSE)))
 })
 
+test_that("jackknife export resolves analysis type from persisted configuration", {
+  expect_identical(fpq_jackknife_analysis_type(
+    workflow = list(), config = list(analysis_type = "compare_two_groups"),
+    manifest = list()), "compare_two_groups")
+  expect_identical(fpq_jackknife_analysis_type(
+    workflow = list(), config = list(),
+    manifest = list(project_preferences = list(
+      analysis_type = "compare_two_groups"))), "compare_two_groups")
+  expect_identical(fpq_jackknife_analysis_type(
+    workflow = list(analysis_type = "quantify_only"),
+    config = list(analysis_type = "compare_two_groups"), manifest = list()),
+    "quantify_only")
+})
+
 test_that("eligibility uses explicit matched biological replicate IDs", {
   config <- make_design(c("CTRL", "TRT"), c(3, 3))
   config$analysis_type <- "compare_two_groups"
@@ -49,4 +63,19 @@ test_that("results card and workbook validation are conditional", {
   expect_match(source, "Jackknife robustness", fixed = TRUE)
   expect_match(source, '"Jackknife_Log2FC" %in% sheets', fixed = TRUE)
   expect_match(source, "JK_Omit_.+_Log2FC", fixed = TRUE)
+})
+
+test_that("published workbook discovery tolerates the inserted jackknife sheet", {
+  sheets <- c(
+    "Mean_Log2FC", "Jackknife_Log2FC", "All_Pixels",
+    "TIC_normalized_intensity", "All_Features_TIC_Normalized", "QC", "README"
+  )
+  expect_identical(
+    fpq_primary_intensity_sheet_from_names(sheets),
+    "TIC_normalized_intensity"
+  )
+  expect_identical(
+    fpq_all_features_sheet_from_names(sheets),
+    "All_Features_TIC_Normalized"
+  )
 })

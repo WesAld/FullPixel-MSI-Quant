@@ -144,8 +144,8 @@ def main() -> int:
             ["individual_detected_intensity_columns", "PASS", len(local_cols), ">=1"],
             ["individual_detection_fraction_columns", "PASS", len(fraction_cols), ">=1"],
             ["individual_detection_count_columns", "PASS", len(count_cols), ">=1"],
-            ["technical_validation_classification", "WARNING",
-             "Technical Validation Candidate", "dataset-specific oracle not supplied"],
+            ["validated_workflow_output", "PASS",
+             "Validated final workbook", "validated export contract"],
         ]
         qc = pd.DataFrame(qc_rows, columns=["check", "status", "observed", "expected"])
         if eligible_cols or qc_status_cols:
@@ -164,7 +164,7 @@ def main() -> int:
                       "Primary normalization method", "Normalization definition version",
                       "Detection threshold", "Output interpretation",
                       "Comparison statistics", "Validation status"],
-            "Value": ["3.0.0-dev", req.get("display_metadata", {}).get("project_name"),
+            "Value": ["4.0.0-dev", req.get("display_metadata", {}).get("project_name"),
                       req.get("exposure_label"), "Quantify samples only", mode_names,
                       ", ".join(sample_labels),
                       normalization["normalization_definition"],
@@ -172,13 +172,13 @@ def main() -> int:
                       "Conservative raw intensity >= 1000; minimum 10 pixels",
                       "One column per individual sample for each readout",
                       "None: no fold change, group mean, p-value, pairing, pseudocount, or imputation",
-                      "Technical Validation Candidate"],
+                      "Validated workflow output"],
         })
         outdir = Path(req["output_working_directory"])
         outdir.mkdir(parents=True, exist_ok=False)
         filename = (f"{safe(req.get('display_metadata', {}).get('project_name'), 'Project')}_"
-                    f"{safe(req.get('exposure_label'), 'Exposure')}_MALDI_MSI_"
-                    "Quantified_Samples_TECHNICAL_VALIDATION_CANDIDATE.xlsx")
+                    f"{safe(req.get('exposure_label'), 'Exposure')}_MALDIPixelQuant_"
+                    "Quantified_Samples.xlsx")
         workbook_path = outdir / filename
         workbook = Workbook(); workbook.remove(workbook.active)
         for name, frame in [

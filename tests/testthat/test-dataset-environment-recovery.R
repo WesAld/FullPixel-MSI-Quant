@@ -53,7 +53,8 @@ test_that("environment and frozen integrity checks are non-destructive", {
 test_that("stale lock requires explicit recovery", {
   root <- tempfile("fpq-project-")
   project <- fpq_create_project(root, "prj-lock-test", "Lock")
-  lock <- file.path(root, ".fpq-project.lock"); writeLines("stale", lock)
+  lock <- file.path(fpq_project_paths(root)$internal_root,
+                    ".fpq-project.lock"); writeLines("stale", lock)
   Sys.setFileTime(lock, Sys.time() - 7200)
   expect_error(fpq_with_project_lock(root, TRUE), class = "fpq_infrastructure_error")
   result <- fpq_recover_project(project, "remove_stale_lock", stale_seconds = 3600)

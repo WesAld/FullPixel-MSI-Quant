@@ -70,21 +70,45 @@ fpq_atomic_write_json <- function(value, path, validate = NULL, simulate_interru
   invisible(path)
 }
 
-fpq_project_paths <- function(project_root) {
-  root <- normalizePath(project_root, mustWork = FALSE)
-  list(root = root, manifest = file.path(root, "project.json"),
-       datasets = file.path(root, "config", "datasets"),
-       run_configurations = file.path(root, "config", "runs"),
-       snapshots = file.path(root, "config", "snapshots"),
-       runs = file.path(root, "runs"), artifacts = file.path(root, "registry", "artifacts.json"),
-       logs = file.path(root, "logs", "events.jsonl"),
-       validations = file.path(root, "validation", "records.json"),
-       provenance = file.path(root, "provenance", "edges.json"),
-       reports = file.path(root, "reports"), temporary = file.path(root, "temporary"))
+fpq_project_internal_directory_name <- function() "MALDIPixelQuant_ProjectFiles"
+
+fpq_project_paths <- function(project_root, layout = c("auto", "v4", "legacy")) {
+  layout <- match.arg(layout)
+  selected <- normalizePath(project_root, mustWork = FALSE)
+  internal_name <- fpq_project_internal_directory_name()
+
+  if (identical(basename(selected), internal_name) &&
+      file.exists(file.path(selected, "project.json"))) {
+    root <- dirname(selected)
+    internal_root <- selected
+    detected_layout <- "v4"
+  } else {
+    root <- selected
+    nested <- file.path(root, internal_name)
+    detected_layout <- if (identical(layout, "auto")) {
+      if (file.exists(file.path(nested, "project.json"))) "v4" else "legacy"
+    } else layout
+    internal_root <- if (identical(detected_layout, "v4")) nested else root
+  }
+
+  list(root = root, internal_root = internal_root, layout = detected_layout,
+       manifest = file.path(internal_root, "project.json"),
+       datasets = file.path(internal_root, "config", "datasets"),
+       run_configurations = file.path(internal_root, "config", "runs"),
+       snapshots = file.path(internal_root, "config", "snapshots"),
+       runs = file.path(internal_root, "runs"),
+       results = file.path(internal_root, "results"),
+       artifacts = file.path(internal_root, "registry", "artifacts.json"),
+       logs = file.path(internal_root, "logs", "events.jsonl"),
+       validations = file.path(internal_root, "validation", "records.json"),
+       provenance = file.path(internal_root, "provenance", "edges.json"),
+       reports = file.path(internal_root, "reports"),
+       temporary = file.path(internal_root, "temporary"))
 }
 
 fpq_with_project_lock <- function(project_root, expr, stale_seconds = 3600) {
-  lock <- file.path(project_root, ".fpq-project.lock")
+  lock <- file.path(fpq_project_paths(project_root)$internal_root,
+                    ".fpq-project.lock")
   if (file.exists(lock)) {
     age <- as.numeric(difftime(Sys.time(), file.info(lock)$mtime, units = "secs"))
     if (is.na(age) || age <= stale_seconds)

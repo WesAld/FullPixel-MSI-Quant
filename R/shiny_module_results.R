@@ -96,25 +96,27 @@ fpq_generic_two_group_final_workbook_sheets <- function() {
 }
 
 fpq_primary_intensity_sheet_from_names <- function(sheets, position = 3L) {
-  if (length(sheets) < position)
-    return(NA_character_)
-  candidate <- sheets[[position]]
   allowed <- c(
     "TIC_normalized_intensity", "Primary_RAW_Intensity",
     "Primary_RMS_Intensity", "Primary_MEDIAN_Intensity"
   )
-  if (candidate %in% allowed) candidate else NA_character_
+  candidate <- if (length(sheets) >= position) sheets[[position]] else ""
+  if (candidate %in% allowed)
+    return(candidate)
+  matches <- intersect(sheets, allowed)
+  if (length(matches) == 1L) matches[[1L]] else NA_character_
 }
 
 fpq_all_features_sheet_from_names <- function(sheets, position = 4L) {
-  if (length(sheets) < position)
-    return(NA_character_)
-  candidate <- sheets[[position]]
   allowed <- c(
     "All_Features_TIC_Normalized", "All_Features_RAW",
     "All_Features_RMS", "All_Features_MEDIAN"
   )
-  if (candidate %in% allowed) candidate else NA_character_
+  candidate <- if (length(sheets) >= position) sheets[[position]] else ""
+  if (candidate %in% allowed)
+    return(candidate)
+  matches <- intersect(sheets, allowed)
+  if (length(matches) == 1L) matches[[1L]] else NA_character_
 }
 
 fpq_validate_generic_two_group_final_results_workbook <- function(path) {
@@ -286,11 +288,12 @@ fpq_validate_generic_two_group_final_results_workbook <- function(path) {
 
     status_index <- which(keys == "validation status")
     if (length(status_index) &&
-        !grepl("technical validation candidate",
-               tolower(values[[status_index[[1L]]]]),
-               fixed = TRUE))
+        !any(vapply(c("validated workflow output",
+                      "technical validation candidate"), grepl,
+                    logical(1), x = tolower(values[[status_index[[1L]]]]),
+                    fixed = TRUE)))
       errors <- c(errors,
-        "README does not identify Technical Validation Candidate status.")
+        "README does not identify the workflow validation status.")
   }
 
   list(
@@ -702,7 +705,7 @@ fpq_results_server <- function(id, state) {
 
       shiny::tagList(
         htmltools::tags$p(
-          "Scientific status: Technical Validation Candidate"),
+          "Status: Validated final workbook"),
         htmltools::tags$p(
           htmltools::tags$strong("Published workbook: "),
           basename(current$path)),

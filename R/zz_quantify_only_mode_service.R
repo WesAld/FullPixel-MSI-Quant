@@ -296,7 +296,7 @@ fpq_prepare_mode_extraction_request <- function(
     artifact_id = paste0("art-", token, "-mzmine"),
     path = normalizePath(mzmine$path, winslash = "/"),
     sha256 = fpq_hash_file(mzmine$path))
-  request$output_working_directory <- file.path(project$root, "runs",
+  request$output_working_directory <- file.path(fpq_project_paths(project$root)$runs,
     workflow_id, "scientific-output", tolower(mode), "extract")
   request$conditions <- list(list(condition_id = "SAMPLES",
     analytical_role = "quantification",
@@ -333,7 +333,7 @@ fpq_prepare_mode_extraction_request <- function(
   request$approved_scientific_configuration$primary_normalization_method <-
     request$primary_normalization_method
   request$display_metadata$normalization <- list(
-    application_version = "3.0.0-dev",
+    application_version = "4.0.0-dev",
     primary_normalization_method = request$primary_normalization_method,
     normalization_scale = request$approved_scientific_configuration$normalization_scale,
     normalization_definition_version = fpq_normalization_definition_version())

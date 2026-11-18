@@ -61,6 +61,8 @@ fpq_register_artifact <- function(project, artifact, activate = FALSE) {
   if (activate) fpq_refresh_downstream_staleness(project)
   fpq_log_event(project, "artifact.registered", run_id = artifact$producing_run_id %||% NULL,
                 details = list(artifact_id = artifact$artifact_id, active = activate))
+  if (activate && identical(artifact$artifact_type, "final_results_workbook"))
+    fpq_promote_validated_workbook(project, artifact)
   artifact
 }
 fpq_list_artifacts <- function(project, filters = list()) {

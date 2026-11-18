@@ -15,6 +15,83 @@ fpq_validate_project_manifest <- function(x) {
   invisible(TRUE)
 }
 
+fpq_sanitize_project_filename <- function(project_name) {
+  value <- trimws(as.character(project_name %||% ""))
+  value <- gsub('[<>:"/\\\\|?*[:cntrl:]]+', "_", value, perl = TRUE)
+  value <- gsub("[[:space:]]+", "_", value, perl = TRUE)
+  value <- gsub("_+", "_", value, perl = TRUE)
+  value <- gsub("^[._ ]+|[._ ]+$", "", value, perl = TRUE)
+  if (!nzchar(value)) value <- "MALDIPixelQuant_Project"
+  if (toupper(value) %in% c("CON", "PRN", "AUX", "NUL",
+      paste0("COM", 1:9), paste0("LPT", 1:9))) value <- paste0("Project_", value)
+  substr(value, 1L, 160L)
+}
+
+fpq_project_final_workbook_path <- function(project) {
+  file.path(fpq_project_paths(project$root)$root,
+    paste0(fpq_sanitize_project_filename(project$manifest$project_name),
+           "_MALDIPixelQuant_Results.xlsx"))
+}
+
+fpq_atomic_copy_file <- function(source, destination, expected_sha256 = NULL) {
+  if (!file.exists(source))
+    fpq_stop("project.export_source_missing", "Validated workbook is unavailable.",
+             "infrastructure")
+  dir.create(dirname(destination), recursive = TRUE, showWarnings = FALSE)
+  token <- gsub("[^A-Za-z0-9]", "", fpq_id("copy"))
+  temporary <- file.path(dirname(destination), paste0(".", basename(destination),
+    ".", token, ".tmp"))
+  backup <- file.path(dirname(destination), paste0(".", basename(destination),
+    ".", token, ".bak"))
+  on.exit(unlink(c(temporary, backup), force = TRUE), add = TRUE)
+  if (!file.copy(source, temporary, overwrite = TRUE, copy.date = TRUE))
+    fpq_stop("project.export_copy_failed", "Could not stage the validated workbook.",
+             "infrastructure")
+  source_hash <- toupper(expected_sha256 %||% fpq_hash_file(source))
+  if (!identical(toupper(fpq_hash_file(temporary)), source_hash))
+    fpq_stop("project.export_hash_failed", "Staged workbook hash verification failed.",
+             "infrastructure")
+  had_destination <- file.exists(destination)
+  if (had_destination && !file.rename(destination, backup))
+    fpq_stop("project.export_backup_failed", "Could not preserve the current workbook.",
+             "infrastructure")
+  if (!file.rename(temporary, destination)) {
+    if (had_destination && file.exists(backup)) file.rename(backup, destination)
+    fpq_stop("project.export_publish_failed", "Could not publish the validated workbook.",
+             "infrastructure")
+  }
+  if (!identical(toupper(fpq_hash_file(destination)), source_hash)) {
+    unlink(destination, force = TRUE)
+    if (had_destination && file.exists(backup)) file.rename(backup, destination)
+    fpq_stop("project.export_identity_failed", "Published workbook identity check failed.",
+             "infrastructure")
+  }
+  unlink(backup, force = TRUE)
+  invisible(destination)
+}
+
+fpq_promote_validated_workbook <- function(project, artifact) {
+  if (!identical(artifact$artifact_type, "final_results_workbook") ||
+      !identical(artifact$validation_status, "PASS") ||
+      !file.exists(artifact$path %||% "")) return(list(promoted = FALSE))
+  validation <- tryCatch(fpq_validate_published_final_results_workbook(artifact$path),
+    error = function(e) list(status = "FAIL"))
+  if (!identical(validation$status, "PASS")) return(list(promoted = FALSE))
+  destination <- fpq_project_final_workbook_path(project)
+  fpq_atomic_copy_file(artifact$path, destination, artifact$sha256)
+  edge <- list(schema_version = "1.0.0", provenance_edge_id = fpq_id("prov"),
+    project_id = project$manifest$project_id, subject_type = "artifact",
+    subject_id = artifact$artifact_id,
+    relationship = "promoted_as_researcher_facing_copy",
+    object_type = "file", object_id = normalizePath(destination, winslash = "/"),
+    recorded_at = fpq_now(), run_id = artifact$producing_run_id %||% NULL,
+    evidence_hash = artifact$sha256,
+    notes = "Researcher-facing alias of the validated internal final workbook.")
+  fpq_store_provenance(project, list(edge))
+  list(promoted = TRUE, path = destination, sha256 = fpq_hash_file(destination),
+       source_artifact_id = artifact$artifact_id)
+}
+
 fpq_create_project <- function(project_root, project_id, project_name,
                                profile_id = "generic-two-group-v1",
                                project_description = NULL,
@@ -25,8 +102,9 @@ fpq_create_project <- function(project_root, project_id, project_name,
   if (!dir.exists(parent)) dir.create(parent, recursive = TRUE)
   staging <- paste0(normalizePath(project_root, mustWork = FALSE), ".creating-", Sys.getpid())
   on.exit(if (dir.exists(staging)) unlink(staging, recursive = TRUE), add = TRUE)
-  paths <- fpq_project_paths(staging)
+  paths <- fpq_project_paths(staging, layout = "v4")
   dirs <- c(paths$datasets, paths$run_configurations, paths$snapshots, paths$runs,
+            paths$results,
             dirname(paths$artifacts), dirname(paths$logs), dirname(paths$validations),
             dirname(paths$provenance), paths$reports, paths$temporary)
   vapply(dirs, dir.create, logical(1), recursive = TRUE, showWarnings = FALSE)
@@ -36,8 +114,10 @@ fpq_create_project <- function(project_root, project_id, project_name,
     project_description = project_description, project_created_at = now, project_updated_at = now,
     project_status = "active",
     repository_root_policy = "Project resources are relative; external scientific inputs are absolute.",
-    project_data_root = list(path = ".", path_type = "project_relative", portability = "portable"),
-    analysis_root = list(path = "runs", path_type = "project_relative", portability = "portable"),
+    project_data_root = list(path = fpq_project_internal_directory_name(),
+      path_type = "project_relative", portability = "portable"),
+    analysis_root = list(path = file.path(fpq_project_internal_directory_name(), "runs"),
+      path_type = "project_relative", portability = "portable"),
     scientific_profile_id = profile_id, scientific_profile_version = "1.0.0",
     scientific_core_version = "1.0.0", registered_datasets = list(),
     active_artifacts = list(), project_preferences = project_preferences,
