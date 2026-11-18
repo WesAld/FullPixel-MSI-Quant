@@ -66,6 +66,7 @@ fpq_validation_server <- function(id, state) {
         compatibility <- fpq_validate_profile_compatibility(config, profile_id)
         shiny::incProgress(0.3)
         environment <- fpq_check_environment(repository_root = fpq_repo_root())
+        workflow_environment_status <- fpq_environment_workflow_status(environment)
         registration_record <- fpq_validation_record("dataset.registration",
           if (registration$blocking) "FAIL" else "PASS",
           if (registration$blocking) paste(registration$missing, collapse = " ") else
@@ -77,20 +78,23 @@ fpq_validation_server <- function(id, state) {
           registration$blocking)
         records <- c(structural$records, list(registration_record),
           compatibility$records, list(fpq_validation_record("environment.overall",
-            if (environment$status == "incompatible") "FAIL" else
-              if (environment$status %in% c("unresolved", "compatible_with_warning")) "WARNING" else "PASS",
-            paste("Environment status:", environment$status),
-            if (environment$status == "incompatible") "CRITICAL" else "WARNING",
-            environment$status == "incompatible", environment$status, "compatible")))
+            if (workflow_environment_status == "incompatible") "FAIL" else
+              if (workflow_environment_status %in% c("unresolved", "compatible_with_warning")) "WARNING" else "PASS",
+            paste("Required environment status:", workflow_environment_status,
+              "(technical status:", environment$status, ")"),
+            if (workflow_environment_status == "incompatible") "CRITICAL" else
+              if (workflow_environment_status == "compatible") "INFO" else "WARNING",
+            workflow_environment_status == "incompatible", workflow_environment_status,
+            "compatible")), fpq_environment_detail_records(environment))
         blocking <- registration$blocking ||
           structural$classification != "structurally_valid" ||
           compatibility$classification %in% c("profile_incompatible",
             "profile_unsupported", "profile_blocked") ||
-          environment$status == "incompatible"
+          workflow_environment_status == "incompatible"
         result <- list(structural = structural, registration = registration,
           profile = compatibility, environment = environment, records = records,
           readiness = if (blocking) "blocked" else
-            if (environment$status == "compatible_with_warning")
+            if (workflow_environment_status == "compatible_with_warning")
               "ready_with_warning" else "ready")
         state$validations(result)
         if (!is.null(state$project()))
@@ -135,10 +139,14 @@ fpq_validation_server <- function(id, state) {
             shiny::actionButton(session$ns("go_configuration"),
               "Review Dataset Configuration")),
         htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("4. Software environment"),
-          fpq_badge(if (x$environment$status == "incompatible") "FAIL" else
-              if (x$environment$status == "compatible") "PASS" else "WARNING",
-                    if (x$environment$status == "incompatible") "Action required" else
-                      if (x$environment$status == "compatible") "Passed" else "Passed with warning")),
+          {
+            environment_status <- fpq_environment_workflow_status(x$environment)
+            fpq_badge(if (environment_status == "incompatible") "FAIL" else
+                if (environment_status == "compatible") "PASS" else "WARNING",
+                      if (environment_status == "incompatible") "Action required" else
+                        if (environment_status == "compatible") "Passed" else
+                          "Passed with warning")
+          }),
         htmltools::tags$section(class = "fpq-card", htmltools::tags$h3("5. Ready to run"),
           fpq_badge(if (x$readiness == "blocked") "FAIL" else
               if (x$readiness == "ready_with_warning") "WARNING" else "PASS",
