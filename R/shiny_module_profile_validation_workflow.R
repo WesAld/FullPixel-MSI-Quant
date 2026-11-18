@@ -188,6 +188,7 @@ fpq_workflow_server <- function(id, state) {
       }
       workflows[[1]]
     })
+    result_export <- fpq_v4_result_export_controller(input, output, session, state)
     validation_ready <- shiny::reactive({
       value <- state$validations()
       length(value) && value$readiness %in%
@@ -394,7 +395,15 @@ fpq_workflow_server <- function(id, state) {
             isTRUE(state$advanced_mode()))
           shiny::actionButton(session$ns("open_results"), "Open Results",
                               class = "btn-primary"),
+        if (isTRUE(fpq_result_export_eligibility(
+              state$project(), workflow$workflow_id)$eligible))
+          shiny::actionButton(session$ns("freeze_result"),
+            "Freeze / Export Result", class = "btn-primary"),
         shiny::actionButton(session$ns("view_details"), "View Run Details"))
+    })
+    shiny::observeEvent(input$freeze_result, {
+      workflow <- latest_workflow()
+      if (!is.null(workflow)) result_export$open(workflow$workflow_id)
     })
     shiny::observeEvent(input$open_results, {
       fpq_v4_navigate(session$rootScope(), "results_internal")

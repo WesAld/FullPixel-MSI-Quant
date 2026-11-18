@@ -4,6 +4,16 @@ All notable changes to FullPixel MSI Quant are documented here.
 
 ## [Unreleased]
 
+### V4 validated result export
+
+- Adds a researcher-facing **Freeze / Export Result** action to completed
+  Workflow and Run History records.
+- Creates normalization-aware, byte-identical workbook copies only after the
+  selected historical run's validated artifact and SHA-256 have been verified.
+- Prevents silent overwrite and records the export destination, hashes,
+  normalization, jackknife state, application version, and software commit in
+  project provenance without creating a new scientific analysis.
+
 ### V3 jackknife development
 
 - Identifies the application as FullPixel MSI Quant V3 `3.0.0-dev`.

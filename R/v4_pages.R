@@ -469,6 +469,7 @@ fpq_runs_ui <- function(id) {
 
 fpq_v4_runs_companion_server <- function(id, state) {
   shiny::moduleServer(id, function(input, output, session) {
+    result_export <- fpq_v4_result_export_controller(input, output, session, state)
     action_button <- function(label, action, workflow_id, class = "btn-default") {
       payload <- jsonlite::toJSON(list(action = action, workflow_id = workflow_id),
         auto_unbox = TRUE)
@@ -488,6 +489,8 @@ fpq_v4_runs_companion_server <- function(id, state) {
         key <- gsub("[^A-Za-z0-9_-]", "-", x$workflow_id)
         download_id <- paste0("download_", key)
         workbook <- x$final_workbook$path %||% ""
+        export_ready <- isTRUE(fpq_result_export_eligibility(
+          state$project(), x$workflow_id)$eligible)
         if (identical(x$status, "completed") && nzchar(workbook) && file.exists(workbook)) {
           local({
             path <- workbook; id <- download_id
@@ -516,6 +519,9 @@ fpq_v4_runs_companion_server <- function(id, state) {
           htmltools::tags$div(class = "fpq-v4-run-actions",
             if (identical(x$status, "completed") && nzchar(workbook) && file.exists(workbook))
               shiny::downloadButton(session$ns(download_id), "Download Workbook"),
+            if (export_ready)
+              action_button("Freeze / Export Result", "freeze", x$workflow_id,
+                "btn-primary"),
             action_button(if (identical(x$status, "failed"))
               "View Failure Details" else "View Run Details", "view", x$workflow_id),
             if (nzchar(x$output_folder %||% "") && dir.exists(x$output_folder))
@@ -531,6 +537,10 @@ fpq_v4_runs_companion_server <- function(id, state) {
       matches <- Filter(function(x) identical(x$workflow_id, request$workflow_id), records)
       if (!length(matches)) return()
       workflow <- matches[[1]]
+      if (identical(request$action, "freeze")) {
+        result_export$open(workflow$workflow_id)
+        return()
+      }
       if (identical(request$action, "open")) {
         if (dir.exists(workflow$output_folder %||% ""))
           try(shell.exec(workflow$output_folder), silent = TRUE)
