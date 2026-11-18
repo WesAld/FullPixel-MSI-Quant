@@ -542,7 +542,7 @@ fpq_v4_runs_companion_server <- function(id, state) {
         process <- processx::process$new(file.path(R.home("bin"), "Rscript.exe"),
           c(file.path(state$repository_root, "tools", "fpq_full_workflow_worker.R"),
             state$project()$root, workflow$workflow_id, state$repository_root),
-          wd = state$repository_root,
+          wd = fpq_safe_subprocess_cwd(),
           stdout = file.path(workflow$output_folder,
             paste0("workflow-resume-", stamp, ".out")),
           stderr = file.path(workflow$output_folder,

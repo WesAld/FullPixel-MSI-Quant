@@ -157,7 +157,7 @@ fpq_add_all_features_comparison_sheet <- function(
     c(file.path(repository_root, "tools",
                 "all_features_comparison_adapter.py"),
       request_path, "--report", report_path),
-    wd = repository_root,
+    wd = fpq_safe_subprocess_cwd(),
     stdout = stdout,
     stderr = stderr,
     error_on_status = FALSE

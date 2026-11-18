@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from normalization_routing import resolve_method
+from subprocess_runtime import run_external_process
 
 ROOT=Path(__file__).resolve().parents[1]
 EXPECTED_INTERNAL={"CTRL_R1","CTRL_R2","CTRL_R3","TRT_R1","TRT_R2","TRT_R3"}
@@ -98,7 +99,8 @@ def validate_request(req, check_environment=True):
         elif not problems:
             pkgs=req["environment_requirements"]["required_packages"]
             expr="q(status=if(all(vapply(c("+",".join(repr(x) for x in pkgs)+"),requireNamespace,logical(1),quietly=TRUE)))0 else 41)"
-            result=subprocess.run([str(rex),"-e",expr],capture_output=True,text=True)
+            result=run_external_process([str(rex),"-e",expr],
+                scientific_script="R package preflight",capture_output=True,text=True)
             if result.returncode: problems.append(issue("environment.packages","Required packages are unavailable; runtime installation is prohibited.","environment"))
     return problems
 
@@ -157,7 +159,8 @@ def execute(request_path, prepare_only=False):
     stdout=workspace/"stdout.log"; stderr=workspace/"stderr.log"; report.update(execution_started=True,stdout_path=str(stdout),stderr_path=str(stderr))
     rex=req["environment_requirements"]["r_executable"]
     with stdout.open("w",encoding="utf-8") as out, stderr.open("w",encoding="utf-8") as err:
-        p=subprocess.run([rex,str(copy)],cwd=workspace,stdout=out,stderr=err)
+        p=run_external_process([rex,str(copy)],scientific_script=copy,
+                               project_path=workspace,stdout=out,stderr=err)
     report["exit_status"]=p.returncode
     dataset_id=f"PVL_{req.get('exposure_label','Single')}_{'Positive' if req.get('ion_mode')=='POS' else 'Negative'}"
     analysis=workspace/"analysis"/"02_Pixel_Quantification"/dataset_id

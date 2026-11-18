@@ -975,7 +975,7 @@ fpq_run_multi_group_export <- function(
       "--report",
       report_path
     ),
-    wd = repository_root,
+    wd = fpq_safe_subprocess_cwd(),
     stdout = stdout,
     stderr = stderr,
     error_on_status = FALSE

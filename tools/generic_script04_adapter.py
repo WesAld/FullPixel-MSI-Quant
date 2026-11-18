@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse, csv, hashlib, json, math, subprocess
 from pathlib import Path
+from subprocess_runtime import run_external_process
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT_HASH="1150E5F10565B7C25784A9DD875380ACC748C95A8D5BE7B0431C1C5767C587D1"
@@ -151,7 +152,8 @@ def main():
   rp.parent.mkdir(parents=True,exist_ok=True); rp.write_text(json.dumps(report,indent=2),encoding='utf-8')
   rex=req['environment_requirements']['r_executable']
   with out.open('w',encoding='utf-8') as o,err.open('w',encoding='utf-8') as e:
-   proc=subprocess.run([rex,str(copy)],cwd=workspace,stdout=o,stderr=e)
+   proc=run_external_process([rex,str(copy)],scientific_script=copy,
+                             project_path=workspace,stdout=o,stderr=e)
   report['process_exit_status']=proc.returncode
   if proc.returncode: raise RuntimeError('Generic Script 04 execution exited unsuccessfully.')
   parent=workspace/'analysis'/'04_Annotation_Merge'/req['dataset_id']; dirs=[x for x in parent.glob('AnnotationMerge_*') if x.is_dir()]

@@ -242,7 +242,7 @@ fpq_workflow_server <- function(id, state) {
                       "fpq_full_workflow_worker.R"),
             state$project()$root, prepared$record$workflow_id,
             state$repository_root),
-          wd = state$repository_root, stdout = stdout, stderr = stderr,
+          wd = fpq_safe_subprocess_cwd(), stdout = stdout, stderr = stderr,
           cleanup = FALSE, supervise = FALSE)
         state$workflow_process(process)
       }, error = function(e) {
@@ -302,7 +302,7 @@ fpq_workflow_server <- function(id, state) {
                         "fpq_full_workflow_worker.R"),
               state$project()$root, workflow$workflow_id,
               state$repository_root),
-            wd = state$repository_root,
+            wd = fpq_safe_subprocess_cwd(),
             stdout = file.path(workflow$output_folder,
                                paste0("workflow-resume-", stamp, ".out")),
             stderr = file.path(workflow$output_folder,
@@ -330,7 +330,7 @@ fpq_workflow_server <- function(id, state) {
                       "fpq_full_workflow_worker.R"),
             state$project()$root, prepared$record$workflow_id,
             state$repository_root),
-          wd = state$repository_root,
+          wd = fpq_safe_subprocess_cwd(),
           stdout = file.path(prepared$record$output_folder,
                              "workflow-worker.out"),
           stderr = file.path(prepared$record$output_folder,

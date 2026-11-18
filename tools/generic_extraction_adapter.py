@@ -5,6 +5,7 @@ import argparse, csv, hashlib, json, math, shutil, subprocess, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from normalization_routing import provenance, resolve_method
+from subprocess_runtime import run_external_process
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_HASH = "D846E8BB354B3BED88A321B8D61FE0BE2F5FE42943C3365F12AAFD6C47F96CB0"
@@ -35,8 +36,9 @@ def resolve_executable(configured):
     return str(Path(resolved).resolve()) if resolved else None
 
 def run_rscript(executable, script, workspace, stdout, stderr):
-    return subprocess.run([executable, str(script)], cwd=workspace,
-                          stdout=stdout, stderr=stderr)
+    return run_external_process(
+        [executable, str(script)], scientific_script=script,
+        project_path=workspace, stdout=stdout, stderr=stderr)
 
 def rquote(value) -> str:
     return '"' + str(value).replace("\\", "/").replace('"', '\\"') + '"'

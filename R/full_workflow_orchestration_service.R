@@ -574,7 +574,7 @@ fpq_run_pvl_script07_and_presentation <- function(project, workflow, masters,
   process <- processx::run(python,
     c(file.path(repository_root, "tools", "script07_adapter.py"),
       request_path, "--report", report_path),
-    wd = repository_root, stdout = stdout, stderr = stderr, error_on_status = FALSE)
+    wd = fpq_safe_subprocess_cwd(), stdout = stdout, stderr = stderr, error_on_status = FALSE)
   report <- if (file.exists(report_path)) fpq_read_json(report_path) else NULL
   if (process$status != 0L || is.null(report) || !identical(report$status, "PASS"))
     fpq_stop("workflow.combined_export_failed",
@@ -648,7 +648,7 @@ fpq_run_generic_export <- function(project, workflow, masters,
   process <- processx::run(python,
     c(file.path(repository_root, "tools", "generic_export_adapter.py"),
       request_path, "--report", report_path),
-    wd = repository_root, stdout = stdout, stderr = stderr,
+    wd = fpq_safe_subprocess_cwd(), stdout = stdout, stderr = stderr,
     error_on_status = FALSE)
   report <- if (file.exists(report_path)) fpq_read_json(report_path) else NULL
   if (process$status != 0L || is.null(report) ||

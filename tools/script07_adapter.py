@@ -2,6 +2,7 @@
 """Request-driven configuration adapter for frozen Script 07."""
 import argparse, hashlib, json, subprocess, time
 from pathlib import Path
+from subprocess_runtime import run_external_process
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "validated-source/07_export_three_graphs_to_graphpad_xlsx_VALIDATED_PUBLICATION_READY.R"
@@ -76,9 +77,10 @@ write_csv_outputs <- TRUE
     stdout = workspace / "stdout.log"
     stderr = workspace / "stderr.log"
     with stdout.open("w") as out, stderr.open("w") as err:
-        process = subprocess.run(
+        process = run_external_process(
             [request["r_executable"], str(execution_copy)],
-            cwd=workspace, stdout=out, stderr=err)
+            scientific_script=execution_copy, project_path=workspace,
+            stdout=out, stderr=err)
     outputs = list(workspace.rglob("*_Three_Readouts_GraphPad_Ready.xlsx"))
     status = "PASS" if process.returncode == 0 and len(outputs) == 1 else "FAIL"
     report = {

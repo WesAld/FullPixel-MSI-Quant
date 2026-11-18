@@ -5,6 +5,7 @@ import argparse, csv, hashlib, json, shutil, subprocess, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from normalization_routing import provenance, resolve_method, route_extraction_summary, summary_columns
+from subprocess_runtime import run_external_process
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_HASH = "3D3E2E7A6E81972FE8F6EA4D54F5BCD52F47D1B66C62E35F8E1CFF00ABB60A97"
@@ -155,7 +156,8 @@ def main():
                       r_executable_resolved=resolved_rex)
         rp.parent.mkdir(parents=True,exist_ok=True); rp.write_text(json.dumps(report,indent=2),encoding="utf-8")
         with out.open("w",encoding="utf-8") as o,err.open("w",encoding="utf-8") as e:
-            proc=subprocess.run([resolved_rex,str(copy)],cwd=workspace,stdout=o,stderr=e)
+            proc=run_external_process([resolved_rex,str(copy)],
+                scientific_script=copy,project_path=workspace,stdout=o,stderr=e)
         report["process_exit_status"]=proc.returncode
         if proc.returncode: raise RuntimeError("Generic Script 03 execution exited unsuccessfully.")
         parent=workspace/"analysis"/"03_Replicate_Summaries"/req["dataset_id"]

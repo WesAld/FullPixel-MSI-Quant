@@ -141,7 +141,7 @@ fpq_dispatch_script03 <- function(project, request_path,
     else "script03_adapter.py"
   process <- processx::process$new(python,
     c(file.path(repository_root, "tools", adapter_file),
-      request_path, "--report", report_path), wd = repository_root,
+      request_path, "--report", report_path), wd = fpq_safe_subprocess_cwd(),
     stdout = adapter_stdout, stderr = adapter_stderr,
     cleanup = FALSE, supervise = FALSE)
   cancelled <- FALSE

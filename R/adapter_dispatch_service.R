@@ -231,7 +231,7 @@ fpq_dispatch_adapter <- function(project, request_path,
   adapter_args <- c(adapter_script, request_path, "--report", report_path)
   command <- list(executable = python, args = as.list(adapter_args))
   process <- tryCatch(processx::process$new(python, adapter_args,
-    wd = repository_root, stdout = adapter_stdout, stderr = adapter_stderr,
+    wd = fpq_safe_subprocess_cwd(), stdout = adapter_stdout, stderr = adapter_stderr,
     cleanup = FALSE, supervise = FALSE), error = identity)
   if (inherits(process, "error")) {
     record <- fpq_record_adapter_failure(

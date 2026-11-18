@@ -209,7 +209,7 @@ fpq_runs_server <- function(id, state) {
         c(file.path(state$repository_root, "tools", "fpq_dispatch_worker.R"),
           state$project()$root, normalizePath(input$request_path),
           state$repository_root, worker_id, x$request$run_id),
-        wd = state$repository_root,
+        wd = fpq_safe_subprocess_cwd(),
         stdout = stdout, stderr = stderr, cleanup = FALSE, supervise = FALSE)
       state$active_worker(process)
       worker_info(list(run_id = x$request$run_id, pid = process$get_pid(),

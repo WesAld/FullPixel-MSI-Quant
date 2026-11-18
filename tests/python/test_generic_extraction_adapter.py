@@ -54,13 +54,34 @@ class RExecutableResolutionTests(unittest.TestCase):
         script = str(Path(tempfile.gettempdir()) / "execution copy.R")
         workspace = Path(tempfile.gettempdir()) / "workspace with spaces"
         with mock.patch.object(ADAPTER.shutil, "which", return_value=resolved), \
-             mock.patch.object(ADAPTER.subprocess, "run",
+             mock.patch.object(ADAPTER, "run_external_process",
                                return_value=subprocess.CompletedProcess([], 0)) as run:
             executable = ADAPTER.resolve_executable("Rscript")
             ADAPTER.run_rscript(executable, script, workspace,
                                 mock.sentinel.stdout, mock.sentinel.stderr)
         run.assert_called_once_with(
-            [str(Path(resolved).resolve()), script], cwd=workspace,
+            [str(Path(resolved).resolve()), script], scientific_script=script,
+            project_path=workspace,
+            stdout=mock.sentinel.stdout, stderr=mock.sentinel.stderr)
+
+    def test_v4_nested_project_workspace_is_not_used_as_process_cwd(self):
+        resolved = str(Path(tempfile.gettempdir()) / "Rscript.EXE")
+        workspace = Path(
+            "D:/publication/archive/01_Authoritative_Project/"
+            "PVL_Single_Exposure_Publication_Final/"
+            "MALDIPixelQuant_ProjectFiles/runs/"
+            "workflow-20261118143500.333-202101/"
+            "scientific-output/pos/extract"
+        )
+        script = workspace / "execution_copy_generic_script01.R"
+        with mock.patch.object(
+                ADAPTER, "run_external_process",
+                return_value=subprocess.CompletedProcess([], 0)) as run:
+            ADAPTER.run_rscript(resolved, script, workspace,
+                                mock.sentinel.stdout, mock.sentinel.stderr)
+        run.assert_called_once_with(
+            [resolved, str(script)], scientific_script=script,
+            project_path=workspace,
             stdout=mock.sentinel.stdout, stderr=mock.sentinel.stderr)
 
 

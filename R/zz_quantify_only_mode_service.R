@@ -391,7 +391,7 @@ fpq_run_quantify_only_export <- function(project, workflow, masters,
   process <- processx::run(python,
     c(file.path(repository_root, "tools", "quantify_only_export_adapter.py"),
       request_path, "--report", report_path),
-    wd = repository_root, stdout = stdout, stderr = stderr,
+    wd = fpq_safe_subprocess_cwd(), stdout = stdout, stderr = stderr,
     error_on_status = FALSE)
   report <- if (file.exists(report_path)) fpq_read_json(report_path) else NULL
   if (process$status != 0L || is.null(report) ||

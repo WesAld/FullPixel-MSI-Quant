@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+from subprocess_runtime import run_external_process
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -677,9 +678,10 @@ def main() -> int:
                 try:
                     with stdout.open("w", encoding="utf-8") as out, \
                          stderr.open("w", encoding="utf-8") as err:
-                        process = subprocess.run(
+                        process = run_external_process(
                             [resolved_r_executable, str(copy_path)],
-                            cwd=pair_workspace,
+                            scientific_script=copy_path,
+                            project_path=pair_workspace,
                             stdout=out,
                             stderr=err,
                             check=False,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse, csv, hashlib, json, math, re, subprocess, time
 from pathlib import Path
+from subprocess_runtime import run_external_process
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT03_HASH = "3CC6A181094350E5E481A045600E6B2DA7BB49B0AF171315111F8BDA1064C73F"
@@ -215,7 +216,8 @@ def validate_request(req, check_environment=True):
             problems.append(issue("environment.r", "Configured Rscript is unavailable.", "environment"))
         else:
             expr = "quit(status=if(all(vapply(c('data.table','openxlsx'),requireNamespace,logical(1),quietly=TRUE)))0 else 9)"
-            result = subprocess.run([str(rex),"-e",expr],capture_output=True,text=True)
+            result = run_external_process([str(rex),"-e",expr],
+                scientific_script="R package preflight",capture_output=True,text=True)
             if result.returncode:
                 problems.append(issue("environment.packages", "Required packages are unavailable.", "environment"))
     return problems
@@ -313,7 +315,8 @@ def main():
       rp.parent.mkdir(parents=True,exist_ok=True); rp.write_text(json.dumps(report,indent=2))
       rex=req["environment_requirements"]["r_executable"]
       with out.open("w") as o,err.open("w") as e:
-        proc=subprocess.run([rex,str(copy)],cwd=workspace,stdout=o,stderr=e)
+        proc=run_external_process([rex,str(copy)],scientific_script=copy,
+                                  project_path=workspace,stdout=o,stderr=e)
       report["process_exit_status"]=proc.returncode
       if proc.returncode: raise RuntimeError("Frozen Script 04 exited unsuccessfully.")
       dataset_id=f"PVL_{req.get('exposure_label','Single')}_{'Positive' if req.get('ion_mode')=='POS' else 'Negative'}"

@@ -49,7 +49,7 @@ fpq_add_jackknife_workbook <- function(project, workflow, masters, result,
   if (!nzchar(python)) python <- Sys.which("python.exe")
   process <- processx::run(python, c(file.path(repository_root, "tools",
     "jackknife_workbook_adapter.py"), request_path, "--report", report_path),
-    wd = repository_root, error_on_status = FALSE)
+    wd = fpq_safe_subprocess_cwd(), error_on_status = FALSE)
   report <- if (file.exists(report_path)) fpq_read_json(report_path) else NULL
   if (process$status != 0L || is.null(report) || !identical(report$status, "PASS"))
     fpq_stop("workflow.jackknife_export_failed",
