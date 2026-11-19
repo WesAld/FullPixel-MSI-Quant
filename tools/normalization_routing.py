@@ -72,7 +72,7 @@ def provenance(method: str, scale: float) -> dict:
         "rms": "Positive finite stored centroid intensities (I > 0); sqrt(mean(I^2)); zero denominator invalid and normalized value NA.",
         "median": "Positive finite stored centroid intensities (I > 0); median(I); zero denominator invalid and normalized value NA.",
     }
-    return {"application_version": "4.0.0-dev",
+    return {"application_version": "2.0.0",
             "primary_normalization_method": method,
             "normalization_scale": scale,
             "normalization_definition_version": DEFINITION_VERSION,

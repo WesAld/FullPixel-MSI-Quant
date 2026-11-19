@@ -835,7 +835,7 @@ fpq_prepare_mode_extraction_request <- function(
   request$approved_scientific_configuration$primary_normalization_method <-
     request$primary_normalization_method
   request$display_metadata$normalization <- list(
-    application_version = "4.0.0-dev",
+    application_version = "2.0.0",
     primary_normalization_method = request$primary_normalization_method,
     normalization_scale = request$approved_scientific_configuration$normalization_scale,
     normalization_definition_version = fpq_normalization_definition_version())

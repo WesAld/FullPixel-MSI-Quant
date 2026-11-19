@@ -315,7 +315,7 @@ fpq_project_server <- function(id, state) {
           technical = list(
             `Searched path` = searched$manifest,
             `Error identifier` = "ui.project_not_found",
-            Remediation = "Select a V4 project root or legacy project root.")))
+            Remediation = "Select a MALDIPixelQuant project root or legacy project root.")))
         return()
       }
       tryCatch({

@@ -70,8 +70,8 @@ test_that("V2 UI exposes exactly four normalization choices and identity", {
     "Median" = "median"))
   app_source <- paste(readLines(file.path(fpq_repo_root(), "R", "shiny_app.R")),
                       collapse = "\n")
-  expect_match(app_source, "FullPixel MSI Quant V3", fixed = TRUE)
-  expect_match(app_source, "3.0.0-dev", fixed = TRUE)
+  expect_match(app_source, "MALDIPixelQuant V2", fixed = TRUE)
+  expect_match(app_source, "2.0.0", fixed = TRUE)
   project_source <- paste(readLines(file.path(fpq_repo_root(), "R",
     "shiny_module_project.R")), collapse = "\n")
   expect_match(project_source, "fpq_normalization_descriptions()", fixed = TRUE)
@@ -142,7 +142,7 @@ test_that("normalization GUI never submits display labels", {
 test_that("V2 status strip and About presentation use the V2 identity", {
   app_source <- paste(readLines(file.path(fpq_repo_root(), "R", "shiny_app.R")),
     collapse = "\n")
-  expect_match(app_source, "App 3.0.0-dev - Scientific core 1.0.0",
+  expect_match(app_source, "App 2.0.0 - Scientific core 1.0.0",
     fixed = TRUE)
   expect_false(grepl("App 1.1.1 - Scientific core", app_source, fixed = TRUE))
 })

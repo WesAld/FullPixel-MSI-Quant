@@ -135,7 +135,7 @@ def main():
    ['validated_workflow_output','PASS','Validated final workbook','validated export contract']
   ],columns=['check','status','observed','expected'])
   readme=pd.DataFrame({'Field':['Application version','Project','Exposure','Reference condition','Comparison condition','Ion modes','Replicates per condition','Primary normalization method','Normalization definition version','Normalization','Detection threshold','Statistical interpretation','Validation status'],
-   'Value':['4.0.0-dev',req['display_metadata'].get('project_name'),req.get('exposure_label'),ref_label,cmp_label,', '.join(x['ion_mode'] for x in masters),len(ctrl),method,normalization['normalization_definition_version'],
+   'Value':['2.0.0',req['display_metadata'].get('project_name'),req.get('exposure_label'),ref_label,cmp_label,', '.join(x['ion_mode'] for x in masters),len(ctrl),method,normalization['normalization_definition_version'],
    normalization['normalization_definition'],'Conservative raw intensity >= 1000; minimum 10 pixels','Descriptive two-group readouts; no p-values, pairing, pseudocount, or imputation','Validated workflow output']})
   outdir=Path(req['output_working_directory']); outdir.mkdir(parents=True,exist_ok=False)
   filename=f"{safe(req['display_metadata'].get('project_name'))}_{safe(req.get('exposure_label'))}_MALDIPixelQuant_Final_Results.xlsx"

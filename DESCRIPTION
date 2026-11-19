@@ -1,7 +1,7 @@
 Package: FullPixelMSIQuant
 Type: Package
-Title: Full-Pixel MALDI-MSI Quantification from MZmine-Aligned Features
-Version: 4.0.0.9000
+Title: MALDIPixelQuant Full-Pixel MALDI-MSI Feature Quantification
+Version: 2.0.0
 Authors@R: person(
     given = "Wessel",
     family = "Alderden",
@@ -9,10 +9,12 @@ Authors@R: person(
     email = "WesAld@users.noreply.github.com"
   )
 Description: A local R Shiny workflow for extracting feature intensities from
-    centroided full-pixel MALDI mass spectrometry imaging data, applying
-    within-pixel spectrum-sum normalization, summarizing individual samples or
-    biological groups, integrating putative MZmine annotations, and exporting
-    validated workbooks with provenance and quality-control records.
+    centroided full-pixel MALDI mass spectrometry imaging data, applying Raw,
+    spectrum-sum, RMS, or Median primary intensity strategies, summarizing
+    individual samples or biological groups, optionally calculating matched
+    biological-replicate jackknife robustness, integrating putative MZmine
+    annotations, and exporting validated workbooks with provenance and
+    quality-control records.
 License: MIT + file LICENSE
 URL: https://github.com/WesAld/FullPixel-MSI-Quant
 BugReports: https://github.com/WesAld/FullPixel-MSI-Quant/issues

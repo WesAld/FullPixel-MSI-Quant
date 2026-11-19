@@ -70,7 +70,7 @@ if (-not (Test-Path -LiteralPath $LaunchScript)) {
 
 $env:FULLPIXEL_MSI_QUANT_ROOT = $RepositoryRoot
 
-Write-Host "Launching MALDIPixelQuant 4.0.0-dev on port $Port..." -ForegroundColor Cyan
+Write-Host "Launching MALDIPixelQuant 2.0.0 on port $Port..." -ForegroundColor Cyan
 Write-Host "Using Rscript: $RscriptPath" -ForegroundColor DarkGray
 
 & $RscriptPath `

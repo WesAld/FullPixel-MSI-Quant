@@ -903,7 +903,7 @@ def main() -> int:
                     f"{label}={count}"
                     for label, count in replicate_counts.items()
                 ),
-                "4.0.0-dev",
+                "2.0.0",
                 method,
                 normalization["normalization_definition_version"],
                 normalization["normalization_definition"],

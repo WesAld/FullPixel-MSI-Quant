@@ -44,11 +44,11 @@ I_{j,p}^{norm} =
 The denominator is the sum of all stored centroid intensities in the same valid
 pixel. The method is described as **spectrum-sum normalization**.
 
-## V3 selectable primary intensity strategies
+## Selectable primary intensity strategies
 
-FullPixel MSI Quant V3 3.0.0-dev retains multiple signal families from the
-same stored centroid spectra. `primary_normalization_method` selects the family
-used downstream; a missing field resolves to `spectrum_sum` for compatibility.
+MALDIPixelQuant V2 retains multiple signal families from the same stored
+centroid spectra. `primary_normalization_method` selects the family used
+downstream; a missing field resolves to `spectrum_sum` for compatibility.
 
 - **Raw (`raw`)** uses `raw_target_intensity` without scaling or transformation.
 - **TIC / spectrum-sum (`spectrum_sum`)** preserves the V1 formula above.
@@ -148,7 +148,8 @@ A changed or missing frozen source blocks scientific execution.
 ## Optional matched biological-replicate-pair jackknife
 
 For an eligible two-group comparison with at least three explicitly matched
-biological replicate IDs, V3 can calculate a leave-one-pair-out jackknife after
+biological replicate IDs, MALDIPixelQuant V2 can calculate a
+leave-one-pair-out jackknife after
 the ordinary FullPixel workflow. For each replicate ID, its sample is omitted
 from both groups. Pixels are never treated as replicates. The chosen primary
 intensity family has already been normalized (if applicable) and is not

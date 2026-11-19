@@ -57,7 +57,7 @@ test_that("Home actions target Project Create and Open", {
     'input$open_project,\n      fpq_v4_navigate(session$rootScope(), "project_open")',
     fixed = TRUE)
   expect_match(source, "Welcome to MALDIPixelQuant", fixed = TRUE)
-  expect_match(source, "4.0.0-dev", fixed = TRUE)
+  expect_match(source, "2.0.0", fixed = TRUE)
 })
 
 test_that("Home presents the approved scientific workflow summary", {
@@ -98,7 +98,7 @@ test_that("navigation visibility does not own or recreate project state", {
 })
 
 test_that("authoritative logo copy is byte-identical", {
-  source <- "C:/Users/Wesse/Downloads/MALDI PixelQuant Laser Spectrum Logo.png"
+  source <- "C:/Branding/MALDI PixelQuant Laser Spectrum Logo.png"
   copy <- file.path(fpq_repo_root(), "app", "www", "branding",
                     "MALDI PixelQuant Laser Spectrum Logo.png")
   web_copy <- file.path(fpq_repo_root(), "app", "www", "branding",
@@ -185,12 +185,12 @@ test_that("V4 startup shell does not suppress Shiny disconnect failures", {
   expect_match(source, "observeEvent(state$configuration()", fixed = TRUE)
 })
 
-test_that("visible runtime identity is MALDIPixelQuant V4", {
+test_that("visible runtime identity is MALDIPixelQuant V2", {
   source <- paste(readLines(file.path(fpq_repo_root(), "R", "v4_shell.R"),
     warn = FALSE), collapse = "\n")
   expect_match(source, 'tags$title("MALDIPixelQuant")', fixed = TRUE)
-  expect_match(source, "v4.0.0-dev", fixed = TRUE)
-  expect_false(grepl("MALDIPixelQuant 4.0.0-dev", source, fixed = TRUE))
+  expect_match(source, "V2 / 2.0.0", fixed = TRUE)
+  expect_false(grepl("MALDIPixelQuant V4", source, fixed = TRUE))
   expect_identical(trimws(readLines(file.path(fpq_repo_root(), "VERSION"))),
-                   "4.0.0-dev")
+                   "2.0.0")
 })

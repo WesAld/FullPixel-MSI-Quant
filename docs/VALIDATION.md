@@ -2,7 +2,7 @@
 
 ## V2 GUI normalization validation
 
-The `2.0.0-dev` GUI completed the two-group Positive-plus-Negative workflow and
+The `2.0.0` GUI completed the two-group Positive-plus-Negative workflow and
 final workbook export for all four selectable primary intensity strategies:
 
 | GUI strategy | Internal value | Primary sheet | All-features sheet |
@@ -25,7 +25,7 @@ Median is an additional sensitivity analysis. The outputs retain the
 
 ## Classification
 
-FullPixel MSI Quant 1.0.0 is released as a **Technical Validation Candidate**.
+MALDIPixelQuant 2.0.0 is released as a **Technical Validation Candidate**.
 
 This means the tested workflows completed end to end with structural,
 numerical, preservation, workbook, and provenance checks. It does not mean the
@@ -132,7 +132,7 @@ applied only to the generated execution copy.
 
 Appropriate:
 
-> FullPixel MSI Quant 1.0.0 passed technical workflow validation using PVL
+> MALDIPixelQuant 2.0.0 passed technical workflow validation using PVL
 > MALDI-MSI test datasets.
 
 Not appropriate:

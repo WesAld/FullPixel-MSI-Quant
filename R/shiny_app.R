@@ -2,7 +2,7 @@ fpq_home_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
     htmltools::tags$section(class = "fpq-hero",
-      htmltools::tags$h1("FullPixel MSI Quant V3"),
+      htmltools::tags$h1("MALDIPixelQuant V2"),
       htmltools::tags$p(class = "fpq-subtitle",
         "A Shiny application for spectrum-sum-normalized quantification of MZmine-aligned features from full-pixel MALDI-MSI data."),
       htmltools::tags$p("The aligned MZmine feature list supplies feature identifiers and target m/z values. Quantitative pixel-level signal is extracted from the original centroided full-pixel imzML/IBD data."),
@@ -78,7 +78,7 @@ fpq_about_server <- function(id, state) {
       htmltools::tags$div(class = "fpq-card-grid",
         htmltools::tags$section(class = "fpq-card",
           htmltools::tags$h3("MALDIPixelQuant"),
-          htmltools::tags$p("Application version 4.0.0-dev"),
+          htmltools::tags$p("Application version 2.0.0"),
           htmltools::tags$p(paste("Package version", as.character(
             utils::packageVersion("FullPixelMSIQuant")))),
           htmltools::tags$p("Scientific-core version 1.0.0"),
@@ -93,8 +93,8 @@ fpq_about_server <- function(id, state) {
           htmltools::tags$ul(
             htmltools::tags$li("Positive, Sequential, and combined workflows remain Technical Validation Candidates until independent scientific review."),
             htmltools::tags$li("Candidate status is disclosed in validation, execution provenance, results, and workbook naming."),
-            htmltools::tags$li("Citation authorship and public license status remain unresolved."),
-            htmltools::tags$li("This is not a publication release."))))
+            htmltools::tags$li("Molecular annotations remain putative accurate-mass matches."),
+            htmltools::tags$li("The software is not intended for clinical or diagnostic use."))))
     })
   })
 }
@@ -123,14 +123,14 @@ fpq_shiny_app <- function(repository_root = fpq_repo_root()) {
   @media(max-width:900px){.fpq-card-grid{grid-template-columns:1fr;}}
   "
   ui <- shiny::navbarPage(
-    title = "FullPixel MSI Quant V3",
+    title = "MALDIPixelQuant V2",
     id = "main_navigation", inverse = TRUE, collapsible = TRUE,
     header = htmltools::tagList(htmltools::tags$style(htmltools::HTML(css)),
       htmltools::tags$div(class = "fpq-status-strip",
         shiny::uiOutput("global_project"), shiny::uiOutput("global_validation"),
         shiny::uiOutput("global_run"),
         shiny::checkboxInput("advanced_mode", "Advanced Mode", FALSE),
-        htmltools::tags$span("App 3.0.0-dev - Scientific core 1.0.0"))),
+        htmltools::tags$span("App 2.0.0 - Scientific core 1.0.0"))),
     shiny::tabPanel("Home", fpq_home_ui("home")),
     shiny::tabPanel("Project", fpq_project_ui("project")),
     shiny::tabPanel("MSI Samples", fpq_sample_import_ui("sample_import")),
@@ -152,7 +152,7 @@ fpq_shiny_app <- function(repository_root = fpq_repo_root()) {
     shiny::tabPanel("About", fpq_about_ui("about")),
     footer = htmltools::tags$footer(class = "container-fluid",
       htmltools::tags$hr(),
-      htmltools::tags$p("FullPixel MSI Quant - putative annotations remain putative.")))
+      htmltools::tags$p("MALDIPixelQuant - putative annotations remain putative.")))
   server <- function(input, output, session) {
     state <- fpq_new_app_state(repository_root)
     shiny::observeEvent(input$advanced_mode, {

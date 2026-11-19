@@ -110,7 +110,7 @@ fpq_create_project <- function(project_root, project_id, project_name,
   vapply(dirs, dir.create, logical(1), recursive = TRUE, showWarnings = FALSE)
   now <- fpq_now()
   manifest <- list(schema_version = "1.0.0", application_id = "FullPixelMSIQuant",
-    application_version = "1.1.1", project_id = project_id, project_name = project_name,
+    application_version = "2.0.0", project_id = project_id, project_name = project_name,
     project_description = project_description, project_created_at = now, project_updated_at = now,
     project_status = "active",
     repository_root_policy = "Project resources are relative; external scientific inputs are absolute.",
