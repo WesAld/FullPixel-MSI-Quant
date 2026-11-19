@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "application_id": "FullPixelMSIQuant",
-  "application_version": "1.0.0",
+  "application_version": "2.0.0",
   "project_id": "prj-example-001",
   "project_name": "Non-scientific contract example",
   "project_description": "Schema example only.",

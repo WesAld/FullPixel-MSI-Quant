@@ -56,6 +56,22 @@ fpq_script03_media_type <- function(filename) {
         "text/plain"
 }
 
+fpq_script03_adapter_failure_message <- function(report) {
+  if (is.null(report) || !is.list(report))
+    return("Script 03 adapter failed without a passing regression report.")
+  error <- trimws(as.character(report$error %||% ""))
+  if (nzchar(error)) return(error)
+  records <- report$validation_records %||% list()
+  blocking <- Filter(function(record)
+    isTRUE(record$blocking) && identical(record$status %||% "", "FAIL") &&
+      nzchar(trimws(as.character(record$message %||% ""))), records)
+  if (length(blocking))
+    return(trimws(as.character(blocking[[1]]$message)))
+  correction <- trimws(as.character(report$recommended_correction %||% ""))
+  if (nzchar(correction)) return(correction)
+  "Script 03 adapter failed without a passing regression report."
+}
+
 fpq_dispatch_script03 <- function(project, request_path,
                                   repository_root = fpq_repo_root(),
                                   python = Sys.which("python")) {
@@ -125,7 +141,7 @@ fpq_dispatch_script03 <- function(project, request_path,
     else "script03_adapter.py"
   process <- processx::process$new(python,
     c(file.path(repository_root, "tools", adapter_file),
-      request_path, "--report", report_path), wd = repository_root,
+      request_path, "--report", report_path), wd = fpq_safe_subprocess_cwd(),
     stdout = adapter_stdout, stderr = adapter_stderr,
     cleanup = FALSE, supervise = FALSE)
   cancelled <- FALSE
@@ -164,8 +180,8 @@ fpq_dispatch_script03 <- function(project, request_path,
       (!identical(report$equivalence$status, "PASS") && !candidate_evidence)) {
     failed <- fpq_transition_run(project, run$run_id, "failed",
       list(adapter_exit_status = status))
-    failed$failure <- list(message = report$recommended_correction %||%
-      "Script 03 adapter failed without a passing regression report.",
+    failed$failure <- list(message =
+      fpq_script03_adapter_failure_message(report),
       adapter_report = report_path, stdout = adapter_stdout,
       stderr = adapter_stderr)
     fpq_atomic_write_json(failed, fpq_run_path(project, run$run_id))

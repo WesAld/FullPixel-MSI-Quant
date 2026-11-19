@@ -815,6 +815,8 @@ fpq_prepare_mode_extraction_request <- function(
     )]
   request$pixel_metadata$expected_coordinate_count <-
     acquisition$expected_coordinate_count
+  request$pixel_metadata$pixel_geometry_policy <-
+    acquisition$pixel_geometry_policy
   request$display_metadata <- list(
     project_name = project$manifest$project_name,
     dataset_prefix = fpq_generic_token(
@@ -829,6 +831,14 @@ fpq_prepare_mode_extraction_request <- function(
     comparisons = request$comparisons,
     sample_mappings = request$internal_role_mappings
   )
+  request$primary_normalization_method <- fpq_normalization_method(config)
+  request$approved_scientific_configuration$primary_normalization_method <-
+    request$primary_normalization_method
+  request$display_metadata$normalization <- list(
+    application_version = "2.0.0",
+    primary_normalization_method = request$primary_normalization_method,
+    normalization_scale = request$approved_scientific_configuration$normalization_scale,
+    normalization_definition_version = fpq_normalization_definition_version())
   fpq_apply_mass_tolerance_to_request(request, config)
 }
 
@@ -965,7 +975,7 @@ fpq_run_multi_group_export <- function(
       "--report",
       report_path
     ),
-    wd = repository_root,
+    wd = fpq_safe_subprocess_cwd(),
     stdout = stdout,
     stderr = stderr,
     error_on_status = FALSE
@@ -1134,7 +1144,12 @@ fpq_validate_multi_group_final_results_workbook <- function(path) {
       character()
     }
   )
-  expected <- fpq_multi_group_final_workbook_sheets()
+  intensity_sheet <- fpq_primary_intensity_sheet_from_names(sheets)
+  all_features_sheet <- fpq_all_features_sheet_from_names(sheets)
+  expected <- c(
+    "Mean_Log2FC", "All_Pixels", intensity_sheet,
+    all_features_sheet, "QC", "README"
+  )
   if (!identical(sheets, expected))
     errors <- c(
       errors,
@@ -1168,8 +1183,8 @@ fpq_validate_multi_group_final_results_workbook <- function(path) {
   headers <- list(
     Mean_Log2FC = read_headers("Mean_Log2FC"),
     All_Pixels = read_headers("All_Pixels"),
-    TIC_normalized_intensity =
-      read_headers("TIC_normalized_intensity")
+    primary_intensity = if (is.na(intensity_sheet)) character() else
+      read_headers(intensity_sheet)
   )
   for (sheet in names(headers)) {
     missing <- setdiff(
@@ -1193,9 +1208,9 @@ fpq_validate_multi_group_final_results_workbook <- function(path) {
       "_overall_normalized_signal"
     )
   ]
-  local_samples <- headers$TIC_normalized_intensity[
+  local_samples <- headers$primary_intensity[
     endsWith(
-      headers$TIC_normalized_intensity,
+      headers$primary_intensity,
       "_local_strong_pixel_intensity"
     )
   ]
@@ -1243,9 +1258,9 @@ fpq_validate_multi_group_final_results_workbook <- function(path) {
     startsWith(headers$Mean_Log2FC, "log2FC_")
   ]
   local_comparisons <-
-    headers$TIC_normalized_intensity[
+    headers$primary_intensity[
       startsWith(
-        headers$TIC_normalized_intensity,
+        headers$primary_intensity,
         "local_intensity_log2FC_"
       )
     ]
@@ -1274,7 +1289,7 @@ fpq_validate_multi_group_final_results_workbook <- function(path) {
   all_features <- tryCatch(
     suppressWarnings(openxlsx::read.xlsx(
       path,
-      sheet = "All_Features_TIC_Normalized",
+      sheet = all_features_sheet,
       check.names = FALSE
     )),
     error = function(e) NULL
@@ -1284,7 +1299,7 @@ fpq_validate_multi_group_final_results_workbook <- function(path) {
       !nrow(all_features)) {
     errors <- c(
       errors,
-      "All_Features_TIC_Normalized is missing or empty."
+      "The all-features primary-intensity sheet is missing or empty."
     )
   } else {
     required <- c(
@@ -1301,15 +1316,24 @@ fpq_validate_multi_group_final_results_workbook <- function(path) {
       errors <- c(
         errors,
         paste(
-          "All_Features_TIC_Normalized is missing:",
+          "The all-features primary-intensity sheet is missing:",
           paste(missing, collapse = ", ")
         )
       )
 
+    intensity_suffix <- if (identical(all_features_sheet,
+                                      "All_Features_TIC_Normalized")) {
+      "_TIC_normalized_intensity"
+    } else if (identical(all_features_sheet, "All_Features_RAW")) {
+      "_RAW_intensity"
+    } else {
+      paste0("_", sub("All_Features_", "", all_features_sheet),
+             "_normalized_intensity")
+    }
     individual <- names(all_features)[
       endsWith(
         names(all_features),
-        "_TIC_normalized_intensity"
+        intensity_suffix
       ) &
         !startsWith(
           names(all_features),
@@ -1323,7 +1347,7 @@ fpq_validate_multi_group_final_results_workbook <- function(path) {
       ) &
         endsWith(
           names(all_features),
-          "_TIC_normalized_intensity"
+        intensity_suffix
         )
     ]
     fold <- names(all_features)[
@@ -1456,9 +1480,12 @@ fpq_validate_published_final_results_workbook <- function(path) {
     openxlsx::getSheetNames(path),
     error = function(e) character()
   )
-  if (identical(
-      sheets,
-      fpq_multi_group_final_workbook_sheets())) {
+  multi_group_contract <- length(sheets) == 6L &&
+    identical(sheets[c(1L, 2L, 5L, 6L)],
+              c("Mean_Log2FC", "All_Pixels", "QC", "README")) &&
+    !is.na(fpq_primary_intensity_sheet_from_names(sheets)) &&
+    !is.na(fpq_all_features_sheet_from_names(sheets))
+  if (multi_group_contract) {
     analysis_type <- fpq_multi_group_readme_value(
       path, "Analysis type")
     if (identical(

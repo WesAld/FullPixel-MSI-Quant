@@ -117,9 +117,9 @@ test_that("accessibility-critical controls have text labels and status text", {
   html <- paste(as.character(fpq_design_ui("a")),
                 as.character(fpq_validation_ui("b")),
                 as.character(fpq_runs_ui("c")))
-  for (text in c("Add Treatment", "Add Replicate", "Remove Condition",
-                 "Reference condition", "Show statuses",
-                 "Full workflow history"))
+  for (text in c("Add Treatment", "Add Replicate", "Remove Selected",
+                 "Reference condition", "Show",
+                 "Workflow records"))
     expect_match(html, text, fixed = TRUE)
   badge <- as.character(fpq_badge("FAIL", "Blocked because profile is incompatible"))
   expect_match(badge, "aria-label", fixed = TRUE)

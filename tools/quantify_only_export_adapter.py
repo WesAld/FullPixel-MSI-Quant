@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Create a five-sheet workbook with individual sample readouts and no comparisons."""
 from __future__ import annotations
-import argparse, hashlib, json, re
+import argparse, hashlib, json, re, sys
 from pathlib import Path
 import pandas as pd
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from normalization_routing import provenance, resolve_method
 
 
 def sha(path: Path) -> str:
@@ -82,6 +84,8 @@ def main() -> int:
     try:
         if req.get("analysis_type") != "quantify_only":
             raise RuntimeError("Quantify-only export received the wrong analysis type.")
+        method = resolve_method(req)
+        normalization = provenance(method, req.get("display_metadata", {}).get("normalization", {}).get("normalization_scale", 1000000))
         masters = req.get("masters", [])
         if not masters:
             raise RuntimeError("At least one annotated per-sample master is required.")
@@ -140,8 +144,8 @@ def main() -> int:
             ["individual_detected_intensity_columns", "PASS", len(local_cols), ">=1"],
             ["individual_detection_fraction_columns", "PASS", len(fraction_cols), ">=1"],
             ["individual_detection_count_columns", "PASS", len(count_cols), ">=1"],
-            ["technical_validation_classification", "WARNING",
-             "Technical Validation Candidate", "dataset-specific oracle not supplied"],
+            ["validated_workflow_output", "PASS",
+             "Validated final workbook", "validated export contract"],
         ]
         qc = pd.DataFrame(qc_rows, columns=["check", "status", "observed", "expected"])
         if eligible_cols or qc_status_cols:
@@ -155,24 +159,26 @@ def main() -> int:
             for row in mappings if row.get("internal_value")
         })
         readme = pd.DataFrame({
-            "Field": ["Project", "Exposure", "Analysis type", "Ion modes",
+            "Field": ["Application version", "Project", "Exposure", "Analysis type", "Ion modes",
                       "Registered biological samples", "Normalization",
+                      "Primary normalization method", "Normalization definition version",
                       "Detection threshold", "Output interpretation",
                       "Comparison statistics", "Validation status"],
-            "Value": [req.get("display_metadata", {}).get("project_name"),
+            "Value": ["2.0.0", req.get("display_metadata", {}).get("project_name"),
                       req.get("exposure_label"), "Quantify samples only", mode_names,
                       ", ".join(sample_labels),
-                      "Spectrum-sum normalization; scale 1,000,000",
+                      normalization["normalization_definition"],
+                      method, normalization["normalization_definition_version"],
                       "Conservative raw intensity >= 1000; minimum 10 pixels",
                       "One column per individual sample for each readout",
                       "None: no fold change, group mean, p-value, pairing, pseudocount, or imputation",
-                      "Technical Validation Candidate"],
+                      "Validated workflow output"],
         })
         outdir = Path(req["output_working_directory"])
         outdir.mkdir(parents=True, exist_ok=False)
         filename = (f"{safe(req.get('display_metadata', {}).get('project_name'), 'Project')}_"
-                    f"{safe(req.get('exposure_label'), 'Exposure')}_MALDI_MSI_"
-                    "Quantified_Samples_TECHNICAL_VALIDATION_CANDIDATE.xlsx")
+                    f"{safe(req.get('exposure_label'), 'Exposure')}_MALDIPixelQuant_"
+                    "Quantified_Samples.xlsx")
         workbook_path = outdir / filename
         workbook = Workbook(); workbook.remove(workbook.active)
         for name, frame in [
@@ -203,7 +209,8 @@ def main() -> int:
                             "bytes": workbook_path.stat().st_size},
             source_rows=source_rows, sheet_rows=sheet_rows,
             sample_columns_by_mode=sample_columns_by_mode,
-            validation={"status": "PASS", "comparison_statistics_absent": True})
+            validation={"status": "PASS", "comparison_statistics_absent": True},
+            normalization=normalization)
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
         return 0

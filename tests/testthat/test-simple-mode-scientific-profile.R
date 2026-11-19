@@ -2,8 +2,10 @@ test_that("Simple Mode has no separate Scientific Profile navigation page", {
   app_source <- paste(deparse(body(fpq_shiny_app)), collapse = "\n")
   expect_false(grepl('tabPanel("Scientific Profile"', app_source,
                      fixed = TRUE))
-  expect_match(app_source, 'tabPanel("Advanced Settings"', fixed = TRUE)
-  expect_match(app_source, "Scientific validation details", fixed = TRUE)
+  expect_match(app_source, '"scientific_validation_details"', fixed = TRUE)
+  expect_match(app_source, 'output$v4_technical_navigation', fixed = TRUE)
+  expect_false("scientific_validation_details" %in% fpq_v4_standard_routes())
+  expect_true("scientific_validation_details" %in% fpq_v4_advanced_routes())
 
   project_html <- as.character(fpq_project_ui("project"))
   expect_false(grepl("Scientific profile", project_html, fixed = TRUE))

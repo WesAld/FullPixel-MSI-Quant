@@ -119,6 +119,61 @@ fpq_dispatch_compatibility_configuration <- function(request) {
   )
 }
 
+fpq_record_adapter_failure <- function(project, run_id, exit_status = NULL,
+                                       report = NULL, report_path,
+                                       adapter_stdout, adapter_stderr,
+                                       adapter_stdout_text = "",
+                                       adapter_stderr_text = "",
+                                       command, adapter_script, request_path,
+                                       working_directory,
+                                       process_exception = NULL) {
+  report_error <- report$error %||% NULL
+  exception <- report_error %||% process_exception
+  message <- exception
+  if (is.null(message) || !nzchar(trimws(as.character(message)))) {
+    stderr_lines <- trimws(strsplit(adapter_stderr_text %||% "", "\n",
+                                    fixed = TRUE)[[1]])
+    stderr_lines <- stderr_lines[nzchar(stderr_lines)]
+    message <- if (length(stderr_lines))
+      stderr_lines[[1]]
+    else if (!is.null(report))
+      paste0("Adapter reported status '", report$status %||% "unknown",
+             "' without a structured error.")
+    else if (!is.null(exit_status))
+      paste("Adapter process exited with status", exit_status,
+            "and no structured error was returned.")
+    else
+      "Adapter failed and no structured error was returned."
+  }
+
+  record <- fpq_transition_run(project, run_id, "failed",
+                               list(adapter_exit_status = exit_status))
+  if (!is.null(exit_status)) record$exit_status <- as.integer(exit_status)
+  if (!is.null(report$stdout_path) || !is.null(report$stderr_path))
+    record$logs <- list(stdout = report$stdout_path %||% NULL,
+                        stderr = report$stderr_path %||% NULL)
+  record$failure <- list(
+    message = as.character(message),
+    exception = exception,
+    recommended_correction = report$recommended_correction %||% NULL,
+    adapter_report_path = report_path,
+    adapter_stdout_path = adapter_stdout,
+    adapter_stderr_path = adapter_stderr,
+    scientific_stdout_path = report$stdout_path %||% NULL,
+    scientific_stderr_path = report$stderr_path %||% NULL,
+    scientific_process_exit_status = report$process_exit_status %||% NULL,
+    stdout = adapter_stdout_text,
+    stderr = adapter_stderr_text,
+    command = command,
+    script = adapter_script,
+    request_path = request_path,
+    working_directory = working_directory
+  )
+  fpq_atomic_write_json(record, fpq_run_path(project, run_id))
+  fpq_set_workspace_state(project, run_id, "failed_preserved")
+  record
+}
+
 fpq_dispatch_adapter <- function(project, request_path,
                                  repository_root = fpq_repo_root(),
                                  python = Sys.which("python")) {
@@ -172,11 +227,22 @@ fpq_dispatch_adapter <- function(project, request_path,
       c("generic_two_group", "generic_quantify_only",
         "generic_multi_group"))
     "generic_extraction_adapter.py" else "pvl_adapter.py"
-  process <- processx::process$new(python,
-    c(file.path(repository_root, "tools", adapter_file), request_path,
-      "--report", report_path), wd = repository_root,
-    stdout = adapter_stdout, stderr = adapter_stderr,
-    cleanup = FALSE, supervise = FALSE)
+  adapter_script <- file.path(repository_root, "tools", adapter_file)
+  adapter_args <- c(adapter_script, request_path, "--report", report_path)
+  command <- list(executable = python, args = as.list(adapter_args))
+  process <- tryCatch(processx::process$new(python, adapter_args,
+    wd = fpq_safe_subprocess_cwd(), stdout = adapter_stdout, stderr = adapter_stderr,
+    cleanup = FALSE, supervise = FALSE), error = identity)
+  if (inherits(process, "error")) {
+    record <- fpq_record_adapter_failure(
+      project, run$run_id, report_path = report_path,
+      adapter_stdout = adapter_stdout, adapter_stderr = adapter_stderr,
+      command = command, adapter_script = adapter_script,
+      request_path = request_path, working_directory = repository_root,
+      process_exception = conditionMessage(process))
+    fpq_stop("dispatch.adapter_failed", record$failure$message,
+             "infrastructure")
+  }
   cancelled <- FALSE
   while (process$is_alive()) {
     if (!is.null(identity))
@@ -207,15 +273,28 @@ fpq_dispatch_adapter <- function(project, request_path,
       "cooperative_marker_process_tree", result$status, partial),
       artifact = NULL, adapter_report = NULL))
   }
-  report <- if (file.exists(report_path)) fpq_read_json(report_path) else NULL
-  if (is.null(report) || result$status != 0L || report$status != "completed") {
-    record <- fpq_transition_run(project, run$run_id, "failed",
-                                 list(adapter_exit_status = result$status))
-    record$failure <- list(message = report$recommended_correction %||%
-                             "Adapter failed without a structured report.",
-                           stdout = result$stdout, stderr = result$stderr)
-    fpq_atomic_write_json(record, fpq_run_path(project, run$run_id))
-    fpq_set_workspace_state(project, run$run_id, "failed_preserved")
+  report_read_error <- NULL
+  report <- if (file.exists(report_path))
+    tryCatch(fpq_read_json(report_path), error = function(error) {
+      report_read_error <<- paste("Adapter report could not be read:",
+                                  conditionMessage(error))
+      NULL
+    }) else NULL
+  if (!is.null(report) && !is.list(report)) {
+    report_read_error <- "Adapter report could not be read: expected a JSON object."
+    report <- NULL
+  }
+  if (is.null(report) || result$status != 0L ||
+      !identical(report$status, "completed")) {
+    record <- fpq_record_adapter_failure(
+      project, run$run_id, exit_status = result$status, report = report,
+      report_path = report_path, adapter_stdout = adapter_stdout,
+      adapter_stderr = adapter_stderr,
+      adapter_stdout_text = result$stdout,
+      adapter_stderr_text = result$stderr, command = command,
+      adapter_script = adapter_script, request_path = request_path,
+      working_directory = repository_root,
+      process_exception = report_read_error)
     fpq_stop("dispatch.adapter_failed", record$failure$message, "infrastructure")
   }
   if (!is.null(identity))
@@ -272,6 +351,7 @@ fpq_dispatch_adapter <- function(project, request_path,
   fpq_store_provenance(project, provenance)
   completed <- fpq_transition_run(project, run$run_id, "completed")
   completed$output_artifacts <- list(output$artifact_id)
+  completed$geometry_qc <- report$geometry_qc %||% NULL
   completed$validation_records <- report$validation_records
   completed$logs <- list(stdout = report$stdout_path, stderr = report$stderr_path)
   completed$exit_status <- result$status

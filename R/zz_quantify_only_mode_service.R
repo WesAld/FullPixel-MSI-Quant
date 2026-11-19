@@ -296,7 +296,7 @@ fpq_prepare_mode_extraction_request <- function(
     artifact_id = paste0("art-", token, "-mzmine"),
     path = normalizePath(mzmine$path, winslash = "/"),
     sha256 = fpq_hash_file(mzmine$path))
-  request$output_working_directory <- file.path(project$root, "runs",
+  request$output_working_directory <- file.path(fpq_project_paths(project$root)$runs,
     workflow_id, "scientific-output", tolower(mode), "extract")
   request$conditions <- list(list(condition_id = "SAMPLES",
     analytical_role = "quantification",
@@ -322,11 +322,21 @@ fpq_prepare_mode_extraction_request <- function(
                                                  "full_pixel")]
   request$pixel_metadata$expected_coordinate_count <-
     acquisition$expected_coordinate_count
+  request$pixel_metadata$pixel_geometry_policy <-
+    acquisition$pixel_geometry_policy
   request$display_metadata <- list(
     project_name = project$manifest$project_name,
     dataset_prefix = fpq_generic_token(project$manifest$project_name, "Project"),
     exposure_label = exposure, analysis_type = "quantify_only",
     sample_mappings = request$internal_role_mappings)
+  request$primary_normalization_method <- fpq_normalization_method(config)
+  request$approved_scientific_configuration$primary_normalization_method <-
+    request$primary_normalization_method
+  request$display_metadata$normalization <- list(
+    application_version = "2.0.0",
+    primary_normalization_method = request$primary_normalization_method,
+    normalization_scale = request$approved_scientific_configuration$normalization_scale,
+    normalization_definition_version = fpq_normalization_definition_version())
   fpq_apply_mass_tolerance_to_request(request, config)
 }
 
@@ -381,7 +391,7 @@ fpq_run_quantify_only_export <- function(project, workflow, masters,
   process <- processx::run(python,
     c(file.path(repository_root, "tools", "quantify_only_export_adapter.py"),
       request_path, "--report", report_path),
-    wd = repository_root, stdout = stdout, stderr = stderr,
+    wd = fpq_safe_subprocess_cwd(), stdout = stdout, stderr = stderr,
     error_on_status = FALSE)
   report <- if (file.exists(report_path)) fpq_read_json(report_path) else NULL
   if (process$status != 0L || is.null(report) ||

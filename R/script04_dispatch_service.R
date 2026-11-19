@@ -67,7 +67,7 @@ fpq_dispatch_script04 <- function(project, request_path, repository_root=fpq_rep
       "generic_multi_group")) "multi_group_annotation_adapter.py"
     else "script04_adapter.py"
   p <- processx::process$new(python,c(file.path(repository_root,"tools",adapter_file),
-    request_path,"--report",rp),wd=repository_root,stdout=so,stderr=se,cleanup=FALSE,supervise=FALSE)
+    request_path,"--report",rp),wd=fpq_safe_subprocess_cwd(),stdout=so,stderr=se,cleanup=FALSE,supervise=FALSE)
   cancelled <- FALSE
   identity <- fpq_load_worker_identity(project,run$run_id)
   while (p$is_alive()) {

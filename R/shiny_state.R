@@ -9,6 +9,9 @@ fpq_new_app_state <- function(repository_root) {
     configuration = shiny::reactiveVal(list(conditions = list(), samples = list(),
                                              comparisons = list(), ion_mode = "NEG",
                                              exposure_label = "Single",
+                                             primary_normalization_method = "spectrum_sum",
+                                             statistical_analyses = list(
+                                               jackknife = list(enabled = FALSE)),
                                              mass_tolerance = fpq_default_mass_tolerance())),
     dirty = shiny::reactiveVal(FALSE),
     validations = shiny::reactiveVal(list()),
@@ -46,6 +49,12 @@ fpq_load_project_configuration <- function(project) {
       pixel_size_um = preferences$pixel_size_um %||% 40,
       expected_coordinate_count =
         preferences$expected_coordinate_count %||% 1600,
+      pixel_geometry_policy =
+        preferences$pixel_geometry_policy %||% "strict_predefined",
+      primary_normalization_method =
+        preferences$primary_normalization_method %||% "spectrum_sum",
+      statistical_analyses = preferences$statistical_analyses %||%
+        list(jackknife = list(enabled = FALSE)),
       positive_matrix = preferences$positive_matrix %||% "DHB",
       negative_matrix = preferences$negative_matrix %||% "9AA",
       mass_tolerance = fpq_default_mass_tolerance()))
@@ -67,12 +76,20 @@ fpq_load_project_configuration <- function(project) {
   resolved$expected_coordinate_count <-
     resolved$expected_coordinate_count %||%
     preferences$expected_coordinate_count %||% 1600
+  resolved$pixel_geometry_policy <-
+    resolved$pixel_geometry_policy %||%
+    preferences$pixel_geometry_policy %||% "strict_predefined"
+  resolved$primary_normalization_method <- fpq_normalization_method(list(
+    primary_normalization_method = resolved$primary_normalization_method %||%
+      preferences$primary_normalization_method %||% "spectrum_sum"))
   resolved$positive_matrix <- resolved$positive_matrix %||%
     preferences$positive_matrix %||% "DHB"
   resolved$negative_matrix <- resolved$negative_matrix %||%
     preferences$negative_matrix %||% "9AA"
   resolved$mass_tolerance <- resolved$mass_tolerance %||%
     fpq_default_mass_tolerance()
+  resolved$statistical_analyses <- resolved$statistical_analyses %||%
+    preferences$statistical_analyses %||% list(jackknife = list(enabled = FALSE))
   resolved
 }
 

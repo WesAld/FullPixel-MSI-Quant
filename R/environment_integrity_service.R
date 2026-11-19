@@ -29,6 +29,60 @@ fpq_resolve_rscript_executable <- function(value = NULL) {
   requested
 }
 
+fpq_environment_check_status <- function(check) {
+  if (is.list(check) && !is.null(check$status)) check$status else as.character(check)
+}
+
+fpq_environment_check_is_actionable <- function(name, check) {
+  if (is.list(check) && !is.null(check$required_for_current_workflow))
+    return(isTRUE(check$required_for_current_workflow))
+  if (is.list(check) && identical(check$impact_on_current_workflow %||% "", "none"))
+    return(FALSE)
+  !name %in% c("r_version", "storage")
+}
+
+fpq_environment_workflow_status <- function(environment) {
+  checks <- environment$checks %||% list()
+  if (!length(checks)) return(environment$status %||% "unresolved")
+  actionable <- checks[vapply(names(checks), function(name)
+    fpq_environment_check_is_actionable(name, checks[[name]]), logical(1L))]
+  statuses <- vapply(actionable, fpq_environment_check_status, character(1L))
+  if ("incompatible" %in% statuses) "incompatible" else
+    if ("unresolved" %in% statuses) "unresolved" else
+      if ("compatible_with_warning" %in% statuses) "compatible_with_warning" else
+        "compatible"
+}
+
+fpq_environment_detail_records <- function(environment) {
+  checks <- environment$checks %||% list()
+  records <- list()
+  for (name in names(checks)) {
+    check <- checks[[name]]
+    status <- fpq_environment_check_status(check)
+    if (identical(status, "compatible")) next
+    actionable <- fpq_environment_check_is_actionable(name, check)
+    record_status <- if (actionable && identical(status, "incompatible")) "FAIL" else
+      "WARNING"
+    observed <- if (is.list(check)) check$observed %||% status else check
+    records[[length(records) + 1L]] <- fpq_validation_record(
+      paste0("environment.", name), record_status,
+      if (actionable)
+        paste("Environment check may affect the current workflow:", name)
+      else
+        paste("Optional environment check:", name,
+              "Impact on current workflow: None."),
+      if (actionable && identical(status, "incompatible")) "CRITICAL" else "WARNING",
+      actionable && identical(status, "incompatible"),
+      paste(unlist(observed), collapse = "; "),
+      if (actionable) "compatible" else "optional",
+      if (actionable) "Required workflow capability may be unavailable."
+      else "None for the current selected workflow.",
+      if (actionable) "Install or repair the required component."
+      else "No action required for this workflow.")
+  }
+  records
+}
+
 fpq_check_environment <- function(request = NULL, repository_root = fpq_repo_root()) {
   rscript <- fpq_resolve_rscript_executable(
     if (!is.null(request))
@@ -40,7 +94,8 @@ fpq_check_environment <- function(request = NULL, repository_root = fpq_repo_roo
   checks <- list(
     r = list(status = if (file.exists(rscript)) "compatible" else "incompatible",
              observed = rscript),
-    r_version = list(status = "compatible_with_warning", observed = R.version.string),
+    r_version = list(status = "compatible_with_warning", observed = R.version.string,
+      required_for_current_workflow = FALSE, impact_on_current_workflow = "none"),
     platform = list(status = if (.Platform$OS.type == "windows") "compatible" else
       "compatible_with_warning", observed = R.version$platform),
     packages = list(status = if (all(vapply(packages, requireNamespace, logical(1),
@@ -50,6 +105,8 @@ fpq_check_environment <- function(request = NULL, repository_root = fpq_repo_roo
     python = list(status = if (nzchar(Sys.which("python"))) "compatible" else "incompatible",
                   observed = unname(Sys.which("python"))),
     storage = list(status = "compatible_with_warning",
+                   required_for_current_workflow = FALSE,
+                   impact_on_current_workflow = "none",
                    observed = paste("Free-space threshold is not platform-normalized;",
                                     "this optional check is nonblocking.")),
     scientific_core = fpq_verify_scientific_core(repository_root)$status
@@ -59,5 +116,7 @@ fpq_check_environment <- function(request = NULL, repository_root = fpq_repo_roo
   overall <- if ("incompatible" %in% statuses) "incompatible" else
     if ("unresolved" %in% statuses) "unresolved" else
       if ("compatible_with_warning" %in% statuses) "compatible_with_warning" else "compatible"
-  list(status = overall, checks = checks)
+  environment <- list(status = overall, checks = checks)
+  environment$workflow_status <- fpq_environment_workflow_status(environment)
+  environment
 }

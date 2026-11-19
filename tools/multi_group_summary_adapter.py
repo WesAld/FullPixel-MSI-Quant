@@ -7,15 +7,33 @@ import csv
 import hashlib
 import json
 import re
+import shutil
 import subprocess
+import sys
+from subprocess_runtime import run_external_process
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from normalization_routing import provenance, resolve_method, summary_columns
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_HASH = "3D3E2E7A6E81972FE8F6EA4D54F5BCD52F47D1B66C62E35F8E1CFF00ABB60A97"
 BOUNDARY = '\n###############################################################################\n\nrequired_packages <- c("data.table", "openxlsx")'
+UNRESOLVED = object()
+
+
+def resolve_executable(configured: object) -> str | None:
+    value = str(configured or "").strip()
+    if not value:
+        return None
+    candidate = Path(value)
+    if candidate.is_file():
+        return str(candidate.resolve())
+    resolved = shutil.which(value)
+    return str(Path(resolved).resolve()) if resolved else None
 
 
 def sha(path: Path) -> str:
@@ -51,6 +69,38 @@ def rvec(values: list[str]) -> str:
 def safe(value: object, fallback: str = "Group") -> str:
     token = re.sub(r"[^A-Za-z0-9]+", "_", str(value or "")).strip("_")
     return (token or fallback)[:64]
+
+
+def pair_execution_name(index: int) -> str:
+    return f"p{index:03d}"
+
+
+def pair_execution_dataset_id(index: int) -> str:
+    return f"S03_P{index:03d}"
+
+
+def persist_pair_evidence(
+    pair_workspace: Path,
+    evidence_root: Path,
+    index: int,
+    summary: Path | None = None,
+) -> Path | None:
+    destination = evidence_root / pair_execution_name(index)
+    destination.mkdir(parents=True, exist_ok=True)
+    for name in (
+        "pair_input.csv",
+        "execution_copy_multi_group_script03.R",
+        "script03.stdout.log",
+        "script03.stderr.log",
+    ):
+        source = pair_workspace / name
+        if source.is_file():
+            shutil.copy2(source, destination / name)
+    if summary is not None and summary.is_file():
+        copied = destination / "pair_summary.csv"
+        shutil.copy2(summary, copied)
+        return copied
+    return None
 
 
 def read_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
@@ -112,8 +162,17 @@ def prepare_retry_workspace(workspace: Path) -> Path | None:
     return archived
 
 
-def validate_request(req: dict, check_environment: bool = True) -> list[dict]:
+def validate_request(
+    req: dict,
+    check_environment: bool = True,
+    r_executable: object = UNRESOLVED,
+) -> list[dict]:
     problems: list[dict] = []
+    try:
+        method = resolve_method(req)
+    except ValueError as exc:
+        method = "spectrum_sum"
+        problems.append(issue("scientific.normalization_method", str(exc), "scientific"))
     if req.get("stage_id") != "summarize_replicate_readouts":
         problems.append(issue(
             "stage.unsupported",
@@ -214,6 +273,7 @@ def validate_request(req: dict, check_environment: bool = True) -> list[dict]:
         ))
     else:
         header, rows = read_csv(path)
+        overall_source, local_source = summary_columns(method)
         required = {
             "dataset_id",
             "target_id",
@@ -221,8 +281,8 @@ def validate_request(req: dict, check_environment: bool = True) -> list[dict]:
             "target_mz",
             "sample_id",
             "condition",
-            "normalized_mean_all_valid_pixels",
-            "normalized_mean_conservative_detected_pixels",
+            overall_source,
+            local_source,
             "conservative_detected_pixel_count",
             "conservative_detection_fraction",
             "primary_quantification_eligible",
@@ -262,10 +322,12 @@ def validate_request(req: dict, check_environment: bool = True) -> list[dict]:
         ))
 
     if check_environment:
-        rex = Path(req.get("environment_requirements", {}).get(
-            "r_executable", ""
-        ))
-        if not rex.is_file():
+        resolved = (
+            resolve_executable(req.get("environment_requirements", {}).get(
+                "r_executable", ""))
+            if r_executable is UNRESOLVED else r_executable
+        )
+        if resolved is None:
             problems.append(issue(
                 "environment.r",
                 "Configured Rscript is unavailable.",
@@ -504,7 +566,10 @@ def main() -> int:
         "produced_outputs": [],
     }
 
-    problems = validate_request(req)
+    configured_r_executable = req.get(
+        "environment_requirements", {}).get("r_executable", "")
+    resolved_r_executable = resolve_executable(configured_r_executable)
+    problems = validate_request(req, r_executable=resolved_r_executable)
     report["validation_records"] = problems
     if problems:
         report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -519,6 +584,11 @@ def main() -> int:
             req["registered_inputs"]["pixel_intensity_artifact"]["path"]
         )
         source = pd.read_csv(source_path, low_memory=False)
+        method = resolve_method(req)
+        overall_source, local_source = summary_columns(method)
+        source["normalized_mean_all_valid_pixels"] = source[overall_source]
+        source["normalized_mean_conservative_detected_pixels"] = source[local_source]
+        source["primary_normalization_method"] = method
         sample_tokens = sample_display_tokens(req)
         conditions = {
             item["condition_id"]: item
@@ -537,8 +607,14 @@ def main() -> int:
         aggregate_stdout = workspace / "stdout.log"
         aggregate_stderr = workspace / "stderr.log"
 
-        with aggregate_stdout.open("w", encoding="utf-8") as all_out, \
+        evidence_root = workspace / "pairs"
+        execution_prefix = (
+            "fpq-s03-" + sha_text(str(req.get("run_id", "run")))[:8].lower() + "-"
+        )
+        with tempfile.TemporaryDirectory(prefix=execution_prefix) as execution_dir, \
+             aggregate_stdout.open("w", encoding="utf-8") as all_out, \
              aggregate_stderr.open("w", encoding="utf-8") as all_err:
+            execution_root = Path(execution_dir).resolve()
             for index, comparison in enumerate(
                 req.get("comparisons", []), start=1
             ):
@@ -565,7 +641,7 @@ def main() -> int:
                     f"Comparison_{index}",
                 )
 
-                pair_workspace = workspace / f"pair_{index:03d}_{comparison_token}"
+                pair_workspace = execution_root / pair_execution_name(index)
                 pair_workspace.mkdir(parents=True, exist_ok=False)
                 pair_input = pair_workspace / "pair_input.csv"
                 pair_samples = set(ref_samples + cmp_samples)
@@ -582,10 +658,7 @@ def main() -> int:
                     pair["sample_id"].isin(cmp_samples), "condition"
                 ] = "TRT"
 
-                pair_dataset_id = safe(
-                    f"{req['dataset_id']}_P{index:03d}_{comparison_token}",
-                    f"Pair_{index}",
-                )
+                pair_dataset_id = pair_execution_dataset_id(index)
                 pair = write_pair_input(
                     pair,
                     pair_input,
@@ -602,16 +675,22 @@ def main() -> int:
                 execution_hashes.append(copy_hash)
                 stdout = pair_workspace / "script03.stdout.log"
                 stderr = pair_workspace / "script03.stderr.log"
-                rex = req["environment_requirements"]["r_executable"]
-                with stdout.open("w", encoding="utf-8") as out, \
-                     stderr.open("w", encoding="utf-8") as err:
-                    process = subprocess.run(
-                        [rex, str(copy_path)],
-                        cwd=pair_workspace,
-                        stdout=out,
-                        stderr=err,
-                        check=False,
+                try:
+                    with stdout.open("w", encoding="utf-8") as out, \
+                         stderr.open("w", encoding="utf-8") as err:
+                        process = run_external_process(
+                            [resolved_r_executable, str(copy_path)],
+                            scientific_script=copy_path,
+                            project_path=pair_workspace,
+                            stdout=out,
+                            stderr=err,
+                            check=False,
+                        )
+                except Exception:
+                    persist_pair_evidence(
+                        pair_workspace, evidence_root, index
                     )
+                    raise
                 all_out.write(
                     f"\n===== {comparison_token} =====\n"
                     + stdout.read_text(encoding="utf-8", errors="replace")
@@ -621,6 +700,9 @@ def main() -> int:
                     + stderr.read_text(encoding="utf-8", errors="replace")
                 )
                 if process.returncode:
+                    persist_pair_evidence(
+                        pair_workspace, evidence_root, index
+                    )
                     raise RuntimeError(
                         f"Frozen Script 03 failed for {comparison_token}."
                     )
@@ -638,6 +720,9 @@ def main() -> int:
                     if item.is_dir()
                 ]
                 if len(directories) != 1:
+                    persist_pair_evidence(
+                        pair_workspace, evidence_root, index
+                    )
                     raise RuntimeError(
                         f"Expected one Script 03 output for {comparison_token}; "
                         f"found {len(directories)}."
@@ -646,11 +731,17 @@ def main() -> int:
                     f"{pair_dataset_id}_ThreeReadout_Summary.csv"
                 )
                 if not primary.is_file():
+                    persist_pair_evidence(
+                        pair_workspace, evidence_root, index
+                    )
                     raise RuntimeError(
                         f"Script 03 summary is missing for {comparison_token}."
                     )
                 pair_summary = pd.read_csv(primary, low_memory=False)
                 if len(pair_summary) != source["target_id"].nunique():
+                    persist_pair_evidence(
+                        pair_workspace, evidence_root, index, primary
+                    )
                     raise RuntimeError(
                         f"Script 03 target retention failed for {comparison_token}."
                     )
@@ -666,6 +757,9 @@ def main() -> int:
                     comparison_token,
                     req["dataset_id"],
                 )
+                persisted_summary = persist_pair_evidence(
+                    pair_workspace, evidence_root, index, primary
+                )
                 pair_reports.append({
                     "comparison_id": comparison.get("comparison_id"),
                     "reference_condition_id": ref_id,
@@ -674,8 +768,10 @@ def main() -> int:
                     "comparison_samples": cmp_samples,
                     "reference_token": ref_token,
                     "comparison_token": cmp_token,
+                    "internal_execution_directory": pair_execution_name(index),
+                    "internal_dataset_id": pair_dataset_id,
                     "execution_copy_hash": copy_hash,
-                    "summary_path": str(primary),
+                    "summary_path": str(persisted_summary),
                     "summary_sha256": sha(primary),
                     "rows": len(pair_summary),
                     "columns": len(pair_summary.columns),
@@ -753,7 +849,17 @@ def main() -> int:
                 if archived_workspace is not None
                 else None
             ),
+            path_strategy={
+                "requested_output_workspace": str(workspace),
+                "pair_execution_root_policy": "short operating-system temporary directory",
+                "pair_directory_policy": "pNNN",
+                "pair_dataset_policy": "S03_PNNN",
+                "persisted_pair_evidence": str(evidence_root),
+            },
             frozen_script_hash=SCRIPT_HASH,
+            r_executable_configured=configured_r_executable,
+            r_executable_resolved=resolved_r_executable,
+            normalization=provenance(method, req.get("approved_scientific_configuration", {}).get("normalization_scale", 1000000)),
             execution_copy_hash=aggregate_hash,
             pairwise_execution_copy_hashes=execution_hashes,
             pairwise_comparisons=pair_reports,

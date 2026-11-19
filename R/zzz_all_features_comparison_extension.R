@@ -1,7 +1,34 @@
 # All-registered-features extension for two-group comparison workbooks.
 # Loaded after the quantify-only extension so both workflow branches remain intact.
 
-fpq_all_features_sheet_name <- function() "All_Features_TIC_Normalized"
+fpq_all_features_normalization_method <- function(workflow) {
+  fpq_normalization_method(list(
+    primary_normalization_method =
+      workflow$normalization$primary_normalization_method %||%
+      workflow$display_metadata$normalization$primary_normalization_method %||%
+      workflow$primary_normalization_method %||% "spectrum_sum"
+  ))
+}
+
+fpq_all_features_sheet_name <- function(workflow = list()) {
+  switch(
+    fpq_all_features_normalization_method(workflow),
+    raw = "All_Features_RAW",
+    spectrum_sum = "All_Features_TIC_Normalized",
+    rms = "All_Features_RMS",
+    median = "All_Features_MEDIAN"
+  )
+}
+
+fpq_all_features_intensity_description <- function(workflow = list()) {
+  switch(
+    fpq_all_features_normalization_method(workflow),
+    raw = "individual raw intensities",
+    spectrum_sum = "individual TIC-normalized intensities",
+    rms = "individual RMS-normalized intensities",
+    median = "individual median-normalized intensities"
+  )
+}
 
 fpq_all_features_is_quantify_only <- function(workflow) {
   identical(workflow$execution_adapter %||% "", "generic_quantify_only") ||
@@ -59,7 +86,8 @@ fpq_add_all_features_comparison_sheet <- function(
 
   existing_sheets <- tryCatch(openxlsx::getSheetNames(result$path),
                               error = function(e) character())
-  if (fpq_all_features_sheet_name() %in% existing_sheets) return(result)
+  all_features_sheet <- fpq_all_features_sheet_name(workflow)
+  if (all_features_sheet %in% existing_sheets) return(result)
 
   token <- format(Sys.time(), "%Y%m%d%H%M%S")
   suffix <- if (is.null(attempt_id) || !nzchar(attempt_id)) "" else
@@ -80,6 +108,8 @@ fpq_add_all_features_comparison_sheet <- function(
     workflow_id = workflow$workflow_id,
     project_id = project$manifest$project_id,
     analysis_type = "compare_two_groups",
+    primary_normalization_method =
+      fpq_all_features_normalization_method(workflow),
     exposure_label = workflow$exposure,
     display_metadata = metadata,
     source_workbook = list(
@@ -127,7 +157,7 @@ fpq_add_all_features_comparison_sheet <- function(
     c(file.path(repository_root, "tools",
                 "all_features_comparison_adapter.py"),
       request_path, "--report", report_path),
-    wd = repository_root,
+    wd = fpq_safe_subprocess_cwd(),
     stdout = stdout,
     stderr = stderr,
     error_on_status = FALSE
@@ -163,6 +193,8 @@ fpq_add_all_features_comparison_sheet <- function(
     producing_stage_id = "create_combined_publication_export",
     sha256 = final_hash,
     file_size = unname(file.info(final_path)$size),
+    media_type =
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     validation_status = "PASS",
     scientific_profile_id = project$manifest$scientific_profile_id,
     scientific_core_version = project$manifest$scientific_core_version,
@@ -177,8 +209,10 @@ fpq_add_all_features_comparison_sheet <- function(
     )),
     notes = paste(
       "Six-sheet two-group comparison workbook;",
-      "All_Features_TIC_Normalized retains every registered extracted feature,",
-      "MZmine annotation score, individual TIC-normalized intensities,",
+      paste0(all_features_sheet,
+             " retains every registered extracted feature,"),
+      paste0("MZmine annotation score, ",
+             fpq_all_features_intensity_description(workflow), ","),
       "condition means, linear fold change, and log2 fold change;",
       "existing workbook sheets preserved; source final workbook recorded in",
       "the all-features adapter report but intentionally excluded from active",
@@ -212,6 +246,12 @@ fpq_run_script07_and_presentation <- function(
     attempt_id = NULL) {
   result <- fpq_run_script07_and_presentation_before_all_features(
     project, workflow, masters, repository_root, attempt_id)
+  # The generic publication workbook is complete once the delegated exporter
+  # returns. Record that boundary before the all-features extension runs so a
+  # later final-workbook failure cannot leave combined_export marked running.
+  fpq_set_workflow_stage(
+    project, workflow$workflow_id, "combined_export", "completed",
+    "Generic publication export completed; creating all-features workbook.")
   fpq_add_all_features_comparison_sheet(
     project, workflow, masters, result, repository_root, attempt_id)
 }
@@ -283,10 +323,6 @@ fpq_upgrade_active_comparison_workbook <- function(
 
   final_artifact <- fpq_latest_active_final_workbook(project)
   current_sheets <- openxlsx::getSheetNames(final_artifact$path)
-  if (fpq_all_features_sheet_name() %in% current_sheets)
-    return(list(status = "already_present", path = final_artifact$path,
-                artifact_id = final_artifact$artifact_id))
-
   workflows <- fpq_list_workflow_records(project)
   matching <- Filter(function(x)
     identical(x$workflow_id, final_artifact$producing_run_id), workflows)
@@ -297,6 +333,9 @@ fpq_upgrade_active_comparison_workbook <- function(
         "No completed workflow record was found for the active workbook.")
     completed[[1L]]
   }
+  if (fpq_all_features_sheet_name(workflow) %in% current_sheets)
+    return(list(status = "already_present", path = final_artifact$path,
+                artifact_id = final_artifact$artifact_id))
   masters <- fpq_all_features_masters_for_workbook(
     project, final_artifact, workflow)
   base_result <- list(

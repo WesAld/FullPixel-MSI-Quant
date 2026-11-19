@@ -1,9 +1,9 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
-title: "FullPixel MSI Quant"
+title: "MALDIPixelQuant"
 type: software
-version: "1.1.1"
-date-released: "2026-08-01"
+version: "2.0.0"
+date-released: "2026-11-19"
 authors:
   - family-names: "Alderden"
     given-names: "Wessel"
@@ -11,9 +11,10 @@ repository-code: "https://github.com/WesAld/FullPixel-MSI-Quant"
 url: "https://github.com/WesAld/FullPixel-MSI-Quant"
 license: "MIT"
 abstract: >-
-  A local R Shiny workflow for spectrum-sum-normalized full-pixel MALDI mass
-  spectrometry imaging quantification from aligned MZmine features, with
-  individual-sample, two-group, and multi-group descriptive analysis modes.
+  A local R Shiny workflow for full-pixel MALDI mass spectrometry imaging
+  quantification from aligned MZmine features, with Raw, spectrum-sum, RMS,
+  and Median intensity strategies, optional biological-replicate jackknife
+  analysis, and publication-ready quantitative exports.
 keywords:
   - MALDI-MSI
   - mass spectrometry imaging

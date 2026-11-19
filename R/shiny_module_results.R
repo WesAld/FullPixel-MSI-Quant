@@ -95,6 +95,30 @@ fpq_generic_two_group_final_workbook_sheets <- function() {
   c("Mean_Log2FC", "All_Pixels", "TIC_normalized_intensity", "QC", "README")
 }
 
+fpq_primary_intensity_sheet_from_names <- function(sheets, position = 3L) {
+  allowed <- c(
+    "TIC_normalized_intensity", "Primary_RAW_Intensity",
+    "Primary_RMS_Intensity", "Primary_MEDIAN_Intensity"
+  )
+  candidate <- if (length(sheets) >= position) sheets[[position]] else ""
+  if (candidate %in% allowed)
+    return(candidate)
+  matches <- intersect(sheets, allowed)
+  if (length(matches) == 1L) matches[[1L]] else NA_character_
+}
+
+fpq_all_features_sheet_from_names <- function(sheets, position = 4L) {
+  allowed <- c(
+    "All_Features_TIC_Normalized", "All_Features_RAW",
+    "All_Features_RMS", "All_Features_MEDIAN"
+  )
+  candidate <- if (length(sheets) >= position) sheets[[position]] else ""
+  if (candidate %in% allowed)
+    return(candidate)
+  matches <- intersect(sheets, allowed)
+  if (length(matches) == 1L) matches[[1L]] else NA_character_
+}
+
 fpq_validate_generic_two_group_final_results_workbook <- function(path) {
   errors <- character()
   if (!file.exists(path))
@@ -105,7 +129,8 @@ fpq_validate_generic_two_group_final_results_workbook <- function(path) {
     errors <<- c(errors, paste("openxlsx:", conditionMessage(e)))
     character()
   })
-  expected <- fpq_generic_two_group_final_workbook_sheets()
+  intensity_sheet <- fpq_primary_intensity_sheet_from_names(sheets)
+  expected <- c("Mean_Log2FC", "All_Pixels", intensity_sheet, "QC", "README")
   if (!identical(sheets, expected))
     errors <- c(errors,
       "Worksheet names or order do not match the generic two-group contract.")
@@ -131,12 +156,13 @@ fpq_validate_generic_two_group_final_results_workbook <- function(path) {
   )
   mean_headers <- read_headers("Mean_Log2FC")
   pixel_headers <- read_headers("All_Pixels")
-  local_headers <- read_headers("TIC_normalized_intensity")
+  local_headers <- if (is.na(intensity_sheet)) character() else
+    read_headers(intensity_sheet)
 
   header_sets <- list(
     Mean_Log2FC = mean_headers,
     All_Pixels = pixel_headers,
-    TIC_normalized_intensity = local_headers
+    primary_intensity = local_headers
   )
   for (sheet in names(header_sets)) {
     headers <- header_sets[[sheet]]
@@ -194,7 +220,7 @@ fpq_validate_generic_two_group_final_results_workbook <- function(path) {
       "All_Pixels must contain exactly one dynamic detection-change column.")
   if (length(local_change) != 1L)
     errors <- c(errors,
-      "TIC_normalized_intensity must contain exactly one dynamic local-intensity log2FC column.")
+      "The primary-intensity sheet must contain exactly one dynamic local-intensity log2FC column.")
 
   inferential_tokens <- c(
     "p_value", "pvalue", "q_value", "qvalue", "fdr",
@@ -262,11 +288,12 @@ fpq_validate_generic_two_group_final_results_workbook <- function(path) {
 
     status_index <- which(keys == "validation status")
     if (length(status_index) &&
-        !grepl("technical validation candidate",
-               tolower(values[[status_index[[1L]]]]),
-               fixed = TRUE))
+        !any(vapply(c("validated workflow output",
+                      "technical validation candidate"), grepl,
+                    logical(1), x = tolower(values[[status_index[[1L]]]]),
+                    fixed = TRUE)))
       errors <- c(errors,
-        "README does not identify Technical Validation Candidate status.")
+        "README does not identify the workflow validation status.")
   }
 
   list(
@@ -294,7 +321,12 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
     errors <<- c(errors, paste("openxlsx:", conditionMessage(e)))
     character()
   })
-  expected <- fpq_all_features_comparison_workbook_sheets()
+  intensity_sheet <- fpq_primary_intensity_sheet_from_names(sheets)
+  all_features_sheet <- fpq_all_features_sheet_from_names(sheets)
+  jackknife_enabled <- "Jackknife_Log2FC" %in% sheets
+  expected <- c("Mean_Log2FC",
+                if (jackknife_enabled) "Jackknife_Log2FC",
+                "All_Pixels", intensity_sheet, all_features_sheet, "QC", "README")
   if (!identical(sheets, expected))
     errors <- c(errors,
       "Worksheet names or order do not match the extended comparison contract.")
@@ -309,7 +341,8 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
   base_headers <- list(
     Mean_Log2FC = read_headers("Mean_Log2FC"),
     All_Pixels = read_headers("All_Pixels"),
-    TIC_normalized_intensity = read_headers("TIC_normalized_intensity")
+    primary_intensity = if (is.na(intensity_sheet)) character() else
+      read_headers(intensity_sheet)
   )
   for (sheet in names(base_headers)) {
     headers <- base_headers[[sheet]]
@@ -338,12 +371,12 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
       "Mean_Log2FC does not contain a descriptive log2 fold-change column.")
 
   all_features <- tryCatch(suppressWarnings(openxlsx::read.xlsx(
-    path, sheet = "All_Features_TIC_Normalized",
+    path, sheet = all_features_sheet,
     check.names = FALSE)), error = function(e) NULL)
   if (is.null(all_features) || !is.data.frame(all_features) ||
       !nrow(all_features)) {
     errors <- c(errors,
-      "All_Features_TIC_Normalized is missing or empty.")
+      "The all-features primary-intensity sheet is missing or empty.")
   } else {
     required <- c(
       "dataset_id", "ion_mode", "mzmine_row_id", "target_mz",
@@ -352,11 +385,20 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
     missing <- setdiff(required, names(all_features))
     if (length(missing))
       errors <- c(errors, paste(
-        "All_Features_TIC_Normalized is missing:",
+        "The all-features primary-intensity sheet is missing:",
         paste(missing, collapse = ", ")))
 
+    intensity_suffix <- if (identical(all_features_sheet,
+                                      "All_Features_TIC_Normalized")) {
+      "_TIC_normalized_intensity"
+    } else if (identical(all_features_sheet, "All_Features_RAW")) {
+      "_RAW_intensity"
+    } else {
+      paste0("_", sub("All_Features_", "", all_features_sheet),
+             "_normalized_intensity")
+    }
     sample_columns <- names(all_features)[endsWith(
-      names(all_features), "_TIC_normalized_intensity")]
+      names(all_features), intensity_suffix)]
     mean_columns <- sample_columns[startsWith(sample_columns, "mean_")]
     individual_columns <- setdiff(sample_columns, mean_columns)
     fold_columns <- names(all_features)[startsWith(
@@ -431,6 +473,22 @@ fpq_validate_all_features_comparison_workbook <- function(path) {
   if (!is.data.frame(readme) || ncol(readme) < 2L || !nrow(readme))
     errors <- c(errors, "README sheet is missing or malformed.")
 
+  if (jackknife_enabled) {
+    jackknife <- tryCatch(suppressWarnings(openxlsx::read.xlsx(
+      path, sheet = "Jackknife_Log2FC", check.names = FALSE)),
+      error = function(e) NULL)
+    required <- c("Full_Log2FC", "Jackknife_Mean_Log2FC", "Jackknife_SE",
+      "Jackknife_Min_Log2FC", "Jackknife_Max_Log2FC", "Jackknife_Range",
+      "Direction_Stable", "N_Jackknife_Requested", "N_Jackknife_Valid")
+    if (is.null(jackknife) || !all(required %in% names(jackknife)))
+      errors <- c(errors, "Jackknife_Log2FC is missing required V3 columns.")
+    omit_columns <- if (is.null(jackknife)) character() else
+      grep("^JK_Omit_.+_Log2FC$", names(jackknife), value = TRUE)
+    if (length(omit_columns) < 3L)
+      errors <- c(errors,
+        "Jackknife_Log2FC must contain at least three dynamic omission columns.")
+  }
+
   list(
     status = if (length(errors)) "FAIL" else "PASS",
     errors = unique(errors),
@@ -445,7 +503,13 @@ fpq_validate_published_final_results_workbook <- function(path) {
   sheets <- tryCatch(openxlsx::getSheetNames(path),
                      error = function(e) character())
 
-  if (identical(sheets, fpq_all_features_comparison_workbook_sheets()))
+  all_features_contract <- length(sheets) %in% c(6L, 7L) &&
+    identical(sheets[[1L]], "Mean_Log2FC") &&
+    identical(tail(sheets, 2L), c("QC", "README")) &&
+    (length(sheets) == 6L || identical(sheets[[2L]], "Jackknife_Log2FC")) &&
+    !is.na(fpq_primary_intensity_sheet_from_names(sheets)) &&
+    !is.na(fpq_all_features_sheet_from_names(sheets))
+  if (all_features_contract)
     return(fpq_validate_all_features_comparison_workbook(path))
 
   if (identical(sheets, fpq_quantify_only_final_workbook_sheets()))
@@ -562,6 +626,7 @@ fpq_results_ui <- function(id) {
   shiny::tagList(
     htmltools::tags$h2("Results"),
     shiny::uiOutput(ns("final_workbook")),
+    shiny::uiOutput(ns("jackknife_results")),
     htmltools::tags$p(
       "The detailed nine-sheet scientific-audit workbook remains an internal artifact."))
 }
@@ -640,7 +705,7 @@ fpq_results_server <- function(id, state) {
 
       shiny::tagList(
         htmltools::tags$p(
-          "Scientific status: Technical Validation Candidate"),
+          "Status: Validated final workbook"),
         htmltools::tags$p(
           htmltools::tags$strong("Published workbook: "),
           basename(current$path)),
@@ -648,6 +713,40 @@ fpq_results_server <- function(id, state) {
                               button_label, class = "btn-primary"),
         shiny::actionButton(session$ns("open_results_folder"),
                             "Open Results Folder"))
+    })
+
+    output$jackknife_results <- shiny::renderUI({
+      current <- result()
+      if (!isTRUE(current$available) ||
+          !"Jackknife_Log2FC" %in% (current$validation$sheets %||% character()))
+        return(NULL)
+      frame <- tryCatch(openxlsx::read.xlsx(current$path,
+        sheet = "Jackknife_Log2FC", check.names = FALSE),
+        error = function(e) data.frame())
+      if (!nrow(frame)) return(NULL)
+      stable <- frame$Direction_Stable
+      htmltools::tags$section(class = "fpq-card",
+        htmltools::tags$h3("Jackknife robustness"),
+        htmltools::tags$p(paste("Features analysed:", nrow(frame))),
+        htmltools::tags$p(paste("Matched replicate pairs:",
+          max(frame$N_Jackknife_Requested, na.rm = TRUE))),
+        htmltools::tags$p(paste("Direction stable:",
+          sum(stable %in% TRUE, na.rm = TRUE))),
+        htmltools::tags$p(paste("Direction unstable:",
+          sum(stable %in% FALSE, na.rm = TRUE))),
+        htmltools::tags$details(
+          htmltools::tags$summary("View Jackknife Results"),
+          htmltools::tags$p(
+            "The full-data log2FC remains the primary point estimate."),
+          htmltools::tags$div(class = "table-responsive",
+            htmltools::tags$table(class = "table table-sm",
+              htmltools::tags$thead(htmltools::tags$tr(lapply(
+                names(frame)[seq_len(min(ncol(frame), 12L))],
+                htmltools::tags$th))),
+              htmltools::tags$tbody(lapply(seq_len(min(nrow(frame), 25L)),
+                function(i) htmltools::tags$tr(lapply(
+                  frame[i, seq_len(min(ncol(frame), 12L)), drop = TRUE],
+                  htmltools::tags$td))))))))
     })
 
     shiny::observeEvent(input$open_results_folder, {

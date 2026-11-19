@@ -1,8 +1,53 @@
 # Changelog
 
-All notable changes to FullPixel MSI Quant are documented here.
+All notable changes to MALDIPixelQuant are documented here.
 
 ## [Unreleased]
+
+## [2.0.0] - 2026-11-19
+
+### Added
+
+- Selectable Raw, TIC/spectrum-sum, RMS, and Median primary intensity
+  strategies with method-aware provenance and workbook sheet contracts.
+- Optional matched biological-replicate-pair jackknife robustness analysis for
+  eligible two-group projects, including the `Jackknife_Log2FC` worksheet.
+- Redesigned MALDIPixelQuant interface for project creation, dataset
+  configuration, validation, workflow monitoring, results, and provenance.
+- Researcher-facing **Freeze / Export Result** for validated completed runs,
+  with normalization-aware filenames, hash verification, overwrite protection,
+  and provenance linkage.
+
+### Changed
+
+- Hardened input validation, normalization selection persistence, workflow
+  state recovery, method-aware all-features export, and Windows subprocess
+  handling for deep application and project paths.
+- Optional unused dependency warnings remain available in technical details but
+  no longer make an otherwise compatible selected workflow appear unready in
+  Standard Mode.
+- Public application, package, documentation, and citation identity is now
+  MALDIPixelQuant V2 / 2.0.0.
+
+### Compatibility
+
+- Legacy spectrum-sum calculations and TIC-named workbook contracts remain
+  backward-compatible.
+- The frozen scientific source under `validated-source/` is unchanged.
+- V1 tags, releases, and Git history remain available.
+
+### Validation
+
+- Raw, TIC/spectrum-sum, RMS, and Median GUI selection, persistence, execution,
+  final workbook generation, and export were validated end to end with external
+  Positive- and Negative-mode PVL MALDI-MSI data.
+- The V2 spectrum-sum end-to-end regression was backward-compatible with V1
+  within the established numerical tolerance.
+- The automated R and Python suites and frozen scientific-core integrity checks
+  pass for the release candidate.
+- The software retains the Technical Validation Candidate scientific
+  classification; RMS and Median are not claimed to be scientifically superior
+  to spectrum-sum.
 
 ## [1.1.1] - 2026-08-01
 
@@ -73,7 +118,8 @@ All notable changes to FullPixel MSI Quant are documented here.
 - Release remains classified as a Technical Validation Candidate because an
   independent scientific reference oracle has not been established.
 
-[Unreleased]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.1.1...v2.0.0
 [1.1.1]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/WesAld/FullPixel-MSI-Quant/releases/tag/v1.0.0

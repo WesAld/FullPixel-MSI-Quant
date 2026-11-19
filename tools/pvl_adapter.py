@@ -3,6 +3,9 @@
 import argparse, csv, difflib, hashlib, json, math, os, subprocess, sys
 from datetime import datetime, timezone
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from normalization_routing import resolve_method
+from subprocess_runtime import run_external_process
 
 ROOT=Path(__file__).resolve().parents[1]
 EXPECTED_INTERNAL={"CTRL_R1","CTRL_R2","CTRL_R3","TRT_R1","TRT_R2","TRT_R3"}
@@ -43,6 +46,8 @@ def validate_request(req, check_environment=True):
         if x.get("imzml_path") and x.get("ibd_path") and Path(x["imzml_path"]).stem.lower()!=Path(x["ibd_path"]).stem.lower():
             problems.append(issue("input.pair_mismatch",f"imzML/IBD stems differ for {x.get('sample_id')}."))
     cfg=req.get("approved_scientific_configuration",{})
+    try: resolve_method(req)
+    except ValueError as exc: problems.append(issue("scientific.normalization_method",str(exc),"scientific"))
     try:
         abs_tol=float(cfg.get("absolute_tolerance"))
         ppm_tol=float(cfg.get("ppm_tolerance"))
@@ -94,7 +99,8 @@ def validate_request(req, check_environment=True):
         elif not problems:
             pkgs=req["environment_requirements"]["required_packages"]
             expr="q(status=if(all(vapply(c("+",".join(repr(x) for x in pkgs)+"),requireNamespace,logical(1),quietly=TRUE)))0 else 41)"
-            result=subprocess.run([str(rex),"-e",expr],capture_output=True,text=True)
+            result=run_external_process([str(rex),"-e",expr],
+                scientific_script="R package preflight",capture_output=True,text=True)
             if result.returncode: problems.append(issue("environment.packages","Required packages are unavailable; runtime installation is prohibited.","environment"))
     return problems
 
@@ -114,8 +120,14 @@ def make_copy(req, workspace):
     matrix="DHB" if positive else "9AA"
     target_range="c(2500L, 2600L)" if positive else "c(1000L, 1500L)"
     panel=f'''dataset_id <- "{dataset_id}"\n\nraw_data_root <-\n  {rquote(req["registered_inputs"]["raw_data_root"])}\n\nmzmine_csv <-\n  {rquote(req["registered_inputs"]["aligned_target_table"]["path"])}\n\nanalysis_root <-\n  {rquote(analysis)}\n\nexpected_exposure <- "{exposure}"\nexpected_ion_mode <- "{mode}"\nexpected_matrix <- "{matrix}"\nexpected_pixel_size_um <- 40\nexpected_full_pixel <- TRUE\nexpected_coordinate_pixels <- 1600L\nmzmine_expected_row_range <- {target_range}\n\nexpected_sample_ids <- c(\n  "CTRL_R1",\n  "CTRL_R2",\n  "CTRL_R3",\n  "TRT_R1",\n  "TRT_R2",\n  "TRT_R3"\n)\n\nabsolute_tolerance <- {cfg["absolute_tolerance"]}\nppm_tolerance <- {cfg["ppm_tolerance"]}\n\ninclusive_detection_threshold <- {cfg["inclusive_detection_threshold"]}\nconservative_detection_threshold <- {cfg["conservative_detection_threshold"]}\n\nnormalization_scale <- {cfg["normalization_scale"]}\n\nsave_pixel_level_output <- {"TRUE" if req["retention_options"]["save_pixel_level_output"] else "FALSE"}\n\nprimary_detection_threshold <- {cfg["primary_detection_threshold"]}\nprimary_minimum_detected_pixels <- {cfg["primary_minimum_detected_pixels"]}L\n'''
+    panel=panel.replace(
+        f'normalization_scale <- {cfg["normalization_scale"]}\n',
+        f'normalization_scale <- {cfg["normalization_scale"]}\nprimary_normalization_method <- {rquote(resolve_method(req))}\n', 1)
     generated=text[:start]+panel+scientific_body
-    if generated[generated.index(END_MARKER):] != scientific_body: raise RuntimeError("scientific body changed")
+    extension=ROOT/"tools"/"normalization_execution_extension.R"
+    install=f'\nsource({rquote(extension.as_posix())}, local = .GlobalEnv)\nfpq_v2_install_normalization_extension(primary_normalization_method)\n\nmain()\n'
+    if not generated.endswith("main()\n"): raise RuntimeError("validated Script 01 main-call boundary was not found")
+    generated=generated[:-len("main()\n")]+install
     path=workspace/"execution_copy.R"; path.write_text(generated,encoding="utf-8",newline="")
     changes=list(difflib.unified_diff(text[:end].splitlines(),generated[:generated.index(END_MARKER)].splitlines(),fromfile="frozen-config",tofile="execution-config",lineterm=""))
     (workspace/"configuration_transformations.json").write_text(json.dumps(changes,indent=2),encoding="utf-8")
@@ -147,7 +159,8 @@ def execute(request_path, prepare_only=False):
     stdout=workspace/"stdout.log"; stderr=workspace/"stderr.log"; report.update(execution_started=True,stdout_path=str(stdout),stderr_path=str(stderr))
     rex=req["environment_requirements"]["r_executable"]
     with stdout.open("w",encoding="utf-8") as out, stderr.open("w",encoding="utf-8") as err:
-        p=subprocess.run([rex,str(copy)],cwd=workspace,stdout=out,stderr=err)
+        p=run_external_process([rex,str(copy)],scientific_script=copy,
+                               project_path=workspace,stdout=out,stderr=err)
     report["exit_status"]=p.returncode
     dataset_id=f"PVL_{req.get('exposure_label','Single')}_{'Positive' if req.get('ion_mode')=='POS' else 'Negative'}"
     analysis=workspace/"analysis"/"02_Pixel_Quantification"/dataset_id

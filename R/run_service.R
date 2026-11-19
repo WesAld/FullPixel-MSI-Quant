@@ -22,7 +22,7 @@ fpq_create_run <- function(project, request) {
   now <- fpq_now()
   stage_status <- fpq_workflow_stage_status(
     request$stage_id, request$ion_mode, request$exposure_label)
-  acknowledgement_path <- file.path(project$root, "reports",
+  acknowledgement_path <- file.path(fpq_project_paths(project$root)$reports,
     paste0(run_id, "-candidate-acknowledgement.json"))
   acknowledgement <- if (file.exists(acknowledgement_path))
     fpq_read_json(acknowledgement_path) else NULL
@@ -75,7 +75,7 @@ fpq_recover_project <- function(project, action = c("inspect", "remove_stale_loc
                                 stale_seconds = 3600) {
   action <- match.arg(action)
   paths <- fpq_project_paths(project$root)
-  lock <- file.path(project$root, ".fpq-project.lock")
+  lock <- file.path(paths$internal_root, ".fpq-project.lock")
   temporary <- list.files(paths$temporary, full.names = TRUE, all.files = TRUE,
                           no.. = TRUE)
   report <- list(lock_exists = file.exists(lock), abandoned_temporary = temporary,

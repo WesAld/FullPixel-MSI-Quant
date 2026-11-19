@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
 """Generic two-group adapter for the validated Script 03 calculations."""
 from __future__ import annotations
-import argparse, csv, hashlib, json, subprocess
+import argparse, csv, hashlib, json, shutil, subprocess, sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from normalization_routing import provenance, resolve_method, route_extraction_summary, summary_columns
+from subprocess_runtime import run_external_process
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_HASH = "3D3E2E7A6E81972FE8F6EA4D54F5BCD52F47D1B66C62E35F8E1CFF00ABB60A97"
 BOUNDARY = '\n###############################################################################\n\nrequired_packages <- c("data.table", "openxlsx")'
+UNRESOLVED = object()
+
+def resolve_executable(configured):
+    value=str(configured or "").strip()
+    if not value: return None
+    candidate=Path(value)
+    if candidate.is_file(): return str(candidate.resolve())
+    resolved=shutil.which(value)
+    return str(Path(resolved).resolve()) if resolved else None
 
 def sha(path: Path) -> str:
     h=hashlib.sha256()
@@ -24,8 +36,11 @@ def read_csv(path: Path):
     with path.open(encoding="utf-8-sig",newline="") as f:
         r=csv.DictReader(f); rows=list(r); return r.fieldnames or [],rows
 
-def validate_request(req,check_environment=True):
+def validate_request(req,check_environment=True,r_executable=UNRESOLVED):
     problems=[]
+    try: method=resolve_method(req)
+    except ValueError as exc:
+        method="spectrum_sum"; problems.append(issue("scientific.normalization_method",str(exc),"scientific"))
     if req.get("stage_id")!="summarize_replicate_readouts":
         problems.append(issue("stage.unsupported","Expected summarize_replicate_readouts.","scientific"))
     samples=req.get("samples",[])
@@ -42,7 +57,8 @@ def validate_request(req,check_environment=True):
         problems.append(issue("input.inactive","Pixel-intensity artifact must be active and validated.","scientific"))
     else:
         header,rows=read_csv(path)
-        required={"target_id","mzmine_row_id","target_mz","sample_id","normalized_mean_all_valid_pixels",
+        overall,local=summary_columns(method)
+        required={"target_id","mzmine_row_id","target_mz","sample_id",overall,local,
                   "normalized_mean_conservative_detected_pixels","conservative_detected_pixel_count",
                   "conservative_detection_fraction","primary_quantification_eligible","primary_qc_status"}
         missing=required-set(header)
@@ -57,8 +73,9 @@ def validate_request(req,check_environment=True):
     if workspace.exists() and any(workspace.iterdir()):
         problems.append(issue("workspace.not_empty","Workspace must be absent or empty.","infrastructure"))
     if check_environment:
-        rex=Path(req.get("environment_requirements",{}).get("r_executable",""))
-        if not rex.is_file(): problems.append(issue("environment.r","Configured Rscript is unavailable.","environment"))
+        resolved=(resolve_executable(req.get("environment_requirements",{}).get("r_executable",""))
+                  if r_executable is UNRESOLVED else r_executable)
+        if resolved is None: problems.append(issue("environment.r","Configured Rscript is unavailable.","environment"))
     return problems
 
 def make_copy(req,workspace:Path):
@@ -68,11 +85,16 @@ def make_copy(req,workspace:Path):
     end=original.index(BOUNDARY)
     ctrl=[x["sample_id"] for x in req["samples"] if x["condition_id"]=="CTRL"]
     trt=[x["sample_id"] for x in req["samples"] if x["condition_id"]=="TRT"]
+    workspace.mkdir(parents=True,exist_ok=False)
+    method=resolve_method(req)
+    routed=route_extraction_summary(
+        Path(req["registered_inputs"]["pixel_intensity_artifact"]["path"]),
+        workspace/"primary_normalization_input.csv", method)
     analysis=(workspace/"analysis").resolve()
     panel=f'''dataset_id <- {rquote(req["dataset_id"])}
 
 input_csv <-
-  {rquote(req["registered_inputs"]["pixel_intensity_artifact"]["path"])}
+  {rquote(routed)}
 
 analysis_root <- {rquote(analysis.as_posix())}
 
@@ -105,11 +127,11 @@ required_sample_ids <- c(
 )
 '''
     generated=original[:start]+panel+original[end:]
-    workspace.mkdir(parents=True,exist_ok=False)
     path=workspace/"execution_copy_generic_script03.R"
     path.write_text(generated,encoding="utf-8",newline="\n")
     record={"source_hash":sha(source),"execution_copy_hash":sha(path),"sample_count":len(ctrl)+len(trt),
-            "replicates_per_condition":len(ctrl),"configuration_boundary":"request-driven","scientific_body_unchanged":True}
+            "replicates_per_condition":len(ctrl),"configuration_boundary":"request-driven","scientific_body_unchanged":True,
+            "normalization":provenance(method,req.get("approved_scientific_configuration",{}).get("normalization_scale",1000000))}
     (workspace/"configuration_transformations.json").write_text(json.dumps(record,indent=2),encoding="utf-8")
     return path,record
 
@@ -118,7 +140,9 @@ def main():
     req=json.loads(Path(a.request).read_text(encoding="utf-8")); rp=Path(a.report)
     report={"schema_version":"1.0.0","run_id":req.get("run_id"),"stage_id":req.get("stage_id"),
             "status":"preflight_failed","validation_records":[],"produced_outputs":[]}
-    problems=validate_request(req); report["validation_records"]=problems
+    configured_rex=req.get("environment_requirements",{}).get("r_executable","")
+    resolved_rex=resolve_executable(configured_rex)
+    problems=validate_request(req,r_executable=resolved_rex); report["validation_records"]=problems
     if problems:
         rp.parent.mkdir(parents=True,exist_ok=True); rp.write_text(json.dumps(report,indent=2),encoding="utf-8"); return 2
     workspace=Path(req["output_working_directory"]).resolve()
@@ -127,11 +151,13 @@ def main():
         out,err=workspace/"stdout.log",workspace/"stderr.log"
         report.update(status="running",execution_started=True,frozen_script_hash=SCRIPT_HASH,
                       execution_copy_hash=sha(copy),configuration_transformations=transform,
-                      stdout_path=str(out),stderr_path=str(err))
+                      stdout_path=str(out),stderr_path=str(err),
+                      r_executable_configured=configured_rex,
+                      r_executable_resolved=resolved_rex)
         rp.parent.mkdir(parents=True,exist_ok=True); rp.write_text(json.dumps(report,indent=2),encoding="utf-8")
-        rex=req["environment_requirements"]["r_executable"]
         with out.open("w",encoding="utf-8") as o,err.open("w",encoding="utf-8") as e:
-            proc=subprocess.run([rex,str(copy)],cwd=workspace,stdout=o,stderr=e)
+            proc=run_external_process([resolved_rex,str(copy)],
+                scientific_script=copy,project_path=workspace,stdout=o,stderr=e)
         report["process_exit_status"]=proc.returncode
         if proc.returncode: raise RuntimeError("Generic Script 03 execution exited unsuccessfully.")
         parent=workspace/"analysis"/"03_Replicate_Summaries"/req["dataset_id"]

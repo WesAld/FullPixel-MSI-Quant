@@ -29,7 +29,7 @@ fpq_workflow_stage_names <- function() c(
   summarizing = "Summarizing replicate readouts",
   annotating = "Integrating MZmine annotations",
   combined_export = "Creating combined publication export",
-  final_workbook = "Creating final five-sheet workbook",
+  final_workbook = "Creating final Excel workbook",
   validating_workbook = "Validating final workbook")
 
 fpq_new_workflow_stages <- function(modes) {
@@ -147,7 +147,7 @@ fpq_write_raw_hash_registry <- function(project, workflow_id, mode, samples) {
     list(role = paste0(sample$sample_id, "_IBD"),
       path = sample$ibd_path, sha256 = fpq_hash_file(sample$ibd_path)))),
     recursive = FALSE)
-  path <- file.path(project$root, "runs", workflow_id, "requests",
+  path <- file.path(fpq_project_paths(project$root)$runs, workflow_id, "requests",
                     paste0(tolower(mode), "-raw-input-hashes.json"))
   fpq_atomic_write_json(list(schema_version = "1.0.0", files = files), path)
   list(path = normalizePath(path, winslash = "/"),
@@ -162,6 +162,15 @@ fpq_workflow_mode_dataset_id <- function(project, exposure, mode,
   paste(fpq_generic_token(project$manifest$project_name, "Project"),
         fpq_generic_token(exposure, "Exposure"),
         if (mode == "POS") "Positive" else "Negative", sep = "_")
+}
+
+fpq_pixel_geometry_policy <- function(config = list(), preferences = list()) {
+  policy <- config$pixel_geometry_policy %||%
+    preferences$pixel_geometry_policy %||% "strict_predefined"
+  if (!policy %in% c("strict_predefined", "sparse_observed"))
+    fpq_stop("workflow.pixel_geometry_policy",
+      paste("Unsupported pixel geometry policy:", policy), "configuration")
+  policy
 }
 
 fpq_mode_acquisition_metadata <- function(project, config, mode) {
@@ -185,8 +194,9 @@ fpq_mode_acquisition_metadata <- function(project, config, mode) {
     fpq_stop("workflow.coordinate_count",
       "Expected pixels per sample must be a positive integer.", "configuration")
   list(matrix = trimws(matrix), pixel_size_um = pixel_size,
-       full_pixel = isTRUE(preferences$full_pixel %||% TRUE),
-       expected_coordinate_count = coordinates)
+        full_pixel = isTRUE(preferences$full_pixel %||% TRUE),
+        expected_coordinate_count = coordinates,
+        pixel_geometry_policy = fpq_pixel_geometry_policy(config, preferences))
 }
 
 fpq_apply_mass_tolerance_to_request <- function(request, config) {
@@ -242,7 +252,11 @@ fpq_prepare_mode_extraction_request <- function(
   exact_pvl <- project$manifest$scientific_profile_id %in%
       c("pvl-fullpixel-reference-v1", "fullpixel-40um-1600px-v1") &&
     identical(exposure, "Single") && identical(mode, "NEG") &&
-    length(samples) == 6L && isTRUE(tolerance$validated_default)
+    length(samples) == 6L && isTRUE(tolerance$validated_default) &&
+    identical(fpq_normalization_method(config), "spectrum_sum") &&
+    identical(fpq_pixel_geometry_policy(
+      config, project$manifest$project_preferences %||% list()),
+      "strict_predefined")
   acquisition <- fpq_mode_acquisition_metadata(project, config, mode)
 
   request$request_id <- paste0("req-", token, "-extract")
@@ -267,7 +281,7 @@ fpq_prepare_mode_extraction_request <- function(
     artifact_id = paste0("art-", token, "-mzmine"),
     path = normalizePath(mzmine$path, winslash = "/"),
     sha256 = fpq_hash_file(mzmine$path))
-  request$output_working_directory <- file.path(project$root, "runs",
+  request$output_working_directory <- file.path(fpq_project_paths(project$root)$runs,
     workflow_id, "scientific-output", tolower(mode), "extract")
   request$conditions <- list(
     list(condition_id = "CTRL", analytical_role = "reference",
@@ -300,6 +314,8 @@ fpq_prepare_mode_extraction_request <- function(
                                                  "full_pixel")]
   request$pixel_metadata$expected_coordinate_count <-
     acquisition$expected_coordinate_count
+  request$pixel_metadata$pixel_geometry_policy <-
+    acquisition$pixel_geometry_policy
   request$display_metadata <- list(
     project_name = project$manifest$project_name,
     dataset_prefix = fpq_generic_token(project$manifest$project_name, "Project"),
@@ -307,11 +323,28 @@ fpq_prepare_mode_extraction_request <- function(
     reference_condition = request$conditions[[1]]$display_label,
     comparison_condition = request$conditions[[2]]$display_label,
     sample_mappings = request$internal_role_mappings)
+  request$primary_normalization_method <- fpq_normalization_method(config)
+  request$approved_scientific_configuration$primary_normalization_method <-
+    request$primary_normalization_method
+  request$display_metadata$normalization <- list(
+    application_version = "2.0.0",
+    primary_normalization_method = request$primary_normalization_method,
+    normalization_scale = request$approved_scientific_configuration$normalization_scale,
+    normalization_definition_version = fpq_normalization_definition_version())
+  jackknife_design <- fpq_jackknife_design(config)
+  request$display_metadata$jackknife <- list(
+    requested = fpq_jackknife_enabled(config),
+    enabled = fpq_jackknife_enabled(config) && jackknife_design$eligible,
+    eligible = jackknife_design$eligible,
+    resampling_unit = "matched_biological_replicate_pairs",
+    replicate_ids = as.list(jackknife_design$replicate_ids),
+    n_pairs = jackknife_design$n_pairs,
+    eligibility_message = jackknife_design$reason)
   fpq_apply_mass_tolerance_to_request(request, config)
 }
 
 fpq_request_path <- function(project, workflow_id, request) {
-  path <- file.path(project$root, "runs", workflow_id, "requests",
+  path <- file.path(fpq_project_paths(project$root)$runs, workflow_id, "requests",
                     paste0(request$run_id, ".json"))
   fpq_atomic_write_json(request, path)
   normalizePath(path, winslash = "/")
@@ -340,7 +373,7 @@ fpq_prepare_full_workflow <- function(project, config, validations,
     exposure = fpq_project_exposure_label(project, config),
     created_at = fpq_now(), updated_at = fpq_now(), started_at = NULL,
     finished_at = NULL, current_stage = "preparing",
-    output_folder = file.path(project$root, "runs", workflow_id),
+    output_folder = file.path(fpq_project_paths(project$root)$runs, workflow_id),
     validation_snapshot_hash = if (file.exists(
       fpq_project_paths(project$root)$validations))
       fpq_hash_file(fpq_project_paths(project$root)$validations) else NULL,
@@ -504,7 +537,7 @@ fpq_copy_workflow_acknowledgement <- function(project, workflow, run_id) {
     return(invisible(NULL))
   acknowledgement$run_id <- run_id
   acknowledgement$workflow_id <- workflow$workflow_id
-  path <- file.path(project$root, "reports",
+  path <- file.path(fpq_project_paths(project$root)$reports,
                     paste0(run_id, "-candidate-acknowledgement.json"))
   fpq_atomic_write_json(acknowledgement, path)
   invisible(path)
@@ -541,7 +574,7 @@ fpq_run_pvl_script07_and_presentation <- function(project, workflow, masters,
   process <- processx::run(python,
     c(file.path(repository_root, "tools", "script07_adapter.py"),
       request_path, "--report", report_path),
-    wd = repository_root, stdout = stdout, stderr = stderr, error_on_status = FALSE)
+    wd = fpq_safe_subprocess_cwd(), stdout = stdout, stderr = stderr, error_on_status = FALSE)
   report <- if (file.exists(report_path)) fpq_read_json(report_path) else NULL
   if (process$status != 0L || is.null(report) || !identical(report$status, "PASS"))
     fpq_stop("workflow.combined_export_failed",
@@ -550,7 +583,7 @@ fpq_run_pvl_script07_and_presentation <- function(project, workflow, masters,
   audit <- report$candidate_workbook$path
   final_dir <- file.path(workflow$output_folder, "results")
   final_path <- file.path(final_dir, paste0("PVL_", workflow$exposure,
-    "_MALDI_MSI_Final_Results_TECHNICAL_VALIDATION_CANDIDATE.xlsx"))
+    "_MALDIPixelQuant_Final_Results.xlsx"))
   fpq_create_final_results_workbook(audit, final_path,
     current_source_files = c(masters$POS$path, masters$NEG$path, audit),
     exposure = workflow$exposure)
@@ -572,7 +605,7 @@ fpq_run_pvl_script07_and_presentation <- function(project, workflow, masters,
     scientific_profile_id = project$manifest$scientific_profile_id,
     scientific_core_version = project$manifest$scientific_core_version,
     parent_artifact_ids = lapply(masters, `[[`, "artifact_id"),
-    notes = "Five-sheet presentation contract PASS; Technical Validation Candidate"),
+    notes = "Validated final workbook presentation contract PASS"),
     activate = TRUE)
   list(path = final_path, sha256 = artifact$sha256,
        artifact_id = artifact$artifact_id, audit_workbook = audit,
@@ -615,7 +648,7 @@ fpq_run_generic_export <- function(project, workflow, masters,
   process <- processx::run(python,
     c(file.path(repository_root, "tools", "generic_export_adapter.py"),
       request_path, "--report", report_path),
-    wd = repository_root, stdout = stdout, stderr = stderr,
+    wd = fpq_safe_subprocess_cwd(), stdout = stdout, stderr = stderr,
     error_on_status = FALSE)
   report <- if (file.exists(report_path)) fpq_read_json(report_path) else NULL
   if (process$status != 0L || is.null(report) ||
@@ -651,9 +684,8 @@ fpq_run_generic_export <- function(project, workflow, masters,
       project$manifest$scientific_core_version,
     parent_artifact_ids = lapply(masters, `[[`, "artifact_id"),
     notes = paste(
-      "Generic two-group five-sheet workbook;",
-      "dynamic sample, condition, mode, project, and exposure labels;",
-      "Technical Validation Candidate"
+      "Validated generic two-group final workbook;",
+      "dynamic sample, condition, mode, project, and exposure labels"
     )), activate = TRUE)
   list(path = final_path, sha256 = artifact$sha256,
        artifact_id = artifact$artifact_id,
@@ -1035,4 +1067,3 @@ fpq_resume_full_workflow_after_extraction <- function(
     completed
   }, error = function(e) fail_resume(e, current))
 }
-

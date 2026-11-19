@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add an all-registered-features TIC-normalized comparison sheet.
+"""Add a method-aware all-registered-features comparison sheet.
 
 The adapter copies an already validated two-group workbook, leaves its existing
 worksheets unchanged, and adds one sheet built directly from the hash-verified
@@ -27,7 +27,10 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.workbook.properties import CalcProperties
 from openpyxl.utils import get_column_letter
 
-SHEET_NAME = "All_Features_TIC_Normalized"
+from normalization_routing import (resolve_method,
+                                   workbook_intensity_column_suffix,
+                                   workbook_sheet_names)
+
 
 
 def sha256(path: Path) -> str:
@@ -315,7 +318,8 @@ def display_metadata(request: dict[str, Any], source: Path,
             tokens[:len(reference_ids)], tokens[len(reference_ids):])
 
 
-def build_all_features(request: dict[str, Any], source: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
+def build_all_features(request: dict[str, Any], source: Path,
+                       method: str) -> tuple[pd.DataFrame, dict[str, Any]]:
     masters = request.get("masters", []) or []
     if not masters:
         raise RuntimeError("At least one hash-verified annotated master is required.")
@@ -392,18 +396,19 @@ def build_all_features(request: dict[str, Any], source: Path) -> tuple[pd.DataFr
         result[output_column] = (master[source_column].astype(str)
                                  if source_column else "")
 
+    intensity_suffix = workbook_intensity_column_suffix(method)
     display_columns: list[str] = []
     for internal, token in zip(reference_ids + comparison_ids,
                                reference_tokens + comparison_tokens):
-        output_column = f"{token}_TIC_normalized_intensity"
+        output_column = f"{token}{intensity_suffix}"
         result[output_column] = pd.to_numeric(
             master[f"{internal}_overall_normalized_signal"], errors="coerce")
         display_columns.append(output_column)
 
     reference_token = safe_token(reference_label, "Reference")
     comparison_token = safe_token(comparison_label, "Comparison")
-    reference_mean_column = f"mean_{reference_token}_TIC_normalized_intensity"
-    comparison_mean_column = f"mean_{comparison_token}_TIC_normalized_intensity"
+    reference_mean_column = f"mean_{reference_token}{intensity_suffix}"
+    comparison_mean_column = f"mean_{comparison_token}{intensity_suffix}"
     fold_column = f"fold_change_{comparison_token}_vs_{reference_token}"
     log2_column = f"log2FC_{comparison_token}_vs_{reference_token}"
     result[reference_mean_column] = reference_mean
@@ -475,7 +480,11 @@ def append_dataframe(worksheet, frame: pd.DataFrame) -> None:
             for item in cell:
                 item.number_format = "0.0000"
     for name, column in headers.items():
-        if (str(name).endswith("_TIC_normalized_intensity") or
+        if (str(name).endswith(workbook_intensity_column_suffix(
+                "spectrum_sum")) or
+                str(name).endswith(workbook_intensity_column_suffix("raw")) or
+                str(name).endswith(workbook_intensity_column_suffix("rms")) or
+                str(name).endswith(workbook_intensity_column_suffix("median")) or
                 str(name).startswith("fold_change_") or
                 str(name).startswith("log2FC_")):
             for cells in worksheet.iter_cols(min_col=column, max_col=column, min_row=2):
@@ -496,11 +505,16 @@ def main() -> int:
         "schema_version": "1.0.0",
         "workflow_id": request.get("workflow_id"),
         "status": "FAIL",
-        "sheet_name": SHEET_NAME,
+        "sheet_name": None,
     }
     try:
         if request.get("analysis_type") not in (None, "compare_two_groups"):
             raise RuntimeError("The all-features sheet applies only to two-group comparison workflows.")
+        method = resolve_method(request)
+        intensity_sheet, all_features_sheet = workbook_sheet_names(method)
+        report.update(primary_normalization_method=method,
+                      expected_primary_intensity_sheet=intensity_sheet,
+                      sheet_name=all_features_sheet)
         source_item = request.get("source_workbook", {})
         source = Path(source_item.get("path", ""))
         if not source.is_file():
@@ -515,18 +529,23 @@ def main() -> int:
         compatible_source, repaired_source = openpyxl_compatible_source(
             source, output_directory)
         original_digest = workbook_content_digest(
-            compatible_source, excluded={SHEET_NAME})
-        all_features, details = build_all_features(request, compatible_source)
+            compatible_source, excluded={all_features_sheet})
+        all_features, details = build_all_features(
+            request, compatible_source, method)
 
         filename = request.get("output_filename") or source.name
         output = output_directory / filename
         shutil.copy2(compatible_source, output)
 
         workbook = load_workbook(output)
-        if SHEET_NAME in workbook.sheetnames:
-            del workbook[SHEET_NAME]
-        insert_at = workbook.sheetnames.index("TIC_normalized_intensity") + 1
-        worksheet = workbook.create_sheet(SHEET_NAME, insert_at)
+        if all_features_sheet in workbook.sheetnames:
+            del workbook[all_features_sheet]
+        if intensity_sheet not in workbook.sheetnames:
+            raise RuntimeError(
+                f"Primary intensity sheet is missing for normalization method "
+                f"'{method}': expected '{intensity_sheet}'.")
+        insert_at = workbook.sheetnames.index(intensity_sheet) + 1
+        worksheet = workbook.create_sheet(all_features_sheet, insert_at)
         append_dataframe(worksheet, all_features)
         if workbook.calculation is None:
             workbook.calculation = CalcProperties()
@@ -535,14 +554,15 @@ def main() -> int:
         workbook.calculation.calcMode = "auto"
         workbook.save(output)
 
-        updated_digest = workbook_content_digest(output, excluded={SHEET_NAME})
+        updated_digest = workbook_content_digest(
+            output, excluded={all_features_sheet})
         if original_digest != updated_digest:
             raise RuntimeError("An existing workbook sheet changed while adding the all-features sheet.")
 
         checked = load_workbook(output, read_only=True, data_only=False)
         expected_sheets = [
-            "Mean_Log2FC", "All_Pixels", "TIC_normalized_intensity",
-            SHEET_NAME, "QC", "README",
+            "Mean_Log2FC", "All_Pixels", intensity_sheet,
+            all_features_sheet, "QC", "README",
         ]
         try:
             if checked.sheetnames != expected_sheets:
@@ -550,7 +570,7 @@ def main() -> int:
                     "Extended comparison workbook sheet order failed validation: " +
                     ", ".join(checked.sheetnames)
                 )
-            worksheet = checked[SHEET_NAME]
+            worksheet = checked[all_features_sheet]
             if worksheet.max_row - 1 != len(all_features):
                 raise RuntimeError("All-features worksheet row retention failed.")
             headers = [cell.value for cell in next(worksheet.iter_rows(min_row=1, max_row=1))]

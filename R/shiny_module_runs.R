@@ -57,7 +57,7 @@ fpq_record_candidate_acknowledgement <- function(project, request) {
     statement = paste("This workflow has passed technical validation but is",
       "awaiting independent scientific review. Results will be labelled as a",
       "Technical Validation Candidate."))
-  path <- file.path(project$root, "reports",
+  path <- file.path(fpq_project_paths(project$root)$reports,
                     paste0(record$run_id, "-candidate-acknowledgement.json"))
   fpq_atomic_write_json(record, path)
   edge <- list(schema_version = "1.0.0", provenance_edge_id = fpq_id("prov"),
@@ -209,7 +209,7 @@ fpq_runs_server <- function(id, state) {
         c(file.path(state$repository_root, "tools", "fpq_dispatch_worker.R"),
           state$project()$root, normalizePath(input$request_path),
           state$repository_root, worker_id, x$request$run_id),
-        wd = state$repository_root,
+        wd = fpq_safe_subprocess_cwd(),
         stdout = stdout, stderr = stderr, cleanup = FALSE, supervise = FALSE)
       state$active_worker(process)
       worker_info(list(run_id = x$request$run_id, pid = process$get_pid(),

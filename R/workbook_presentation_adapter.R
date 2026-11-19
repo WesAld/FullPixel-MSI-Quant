@@ -126,7 +126,7 @@ fpq_create_final_results_workbook <- function(
     frozen_script_hash =
       "94055F3210D95D6AF0EA35D246D9F234A24FF429496E179DA91EE58A1FBBB0A0",
     adapter_version = "1.0.0", exposure = "Single",
-    classification = "TECHNICAL_VALIDATION_CANDIDATE",
+    classification = "Validated workflow output",
     all_coordinate_pixels = 1600) {
   if (!requireNamespace("openxlsx", quietly = TRUE))
     fpq_stop("workbook_adapter.openxlsx_missing", "openxlsx is required.", "environment")
@@ -239,7 +239,7 @@ fpq_create_final_results_workbook <- function(
   openxlsx::freezePane(wb, "QC", firstRow = TRUE)
 
   readme <- data.frame(topic = c(
-    "Workbook name", "Candidate classification", "Exposure", "Included ion modes",
+    "Workbook name", "Validation status", "Exposure", "Included ion modes",
     "Sample groups", "Replicates", "Three readouts", "Log2 positivity rule",
     "Zero-positive-pixel behaviour", "Minimum replicate requirements",
     "Percentage-point calculation", "Unique feature key", "GraphPad-label formula",

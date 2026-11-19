@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 """Request-driven generic sample-set adapter for validated Script 01 calculations."""
 from __future__ import annotations
-import argparse, csv, hashlib, json, math, subprocess
+import argparse, csv, hashlib, json, math, shutil, subprocess, sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from normalization_routing import provenance, resolve_method
+from subprocess_runtime import run_external_process
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_HASH = "D846E8BB354B3BED88A321B8D61FE0BE2F5FE42943C3365F12AAFD6C47F96CB0"
 END_MARKER = "\n###############################################################################\n\n###############################################################################\n# PACKAGE CHECKING AND RUN STATE"
+UNRESOLVED = object()
+PIXEL_GEOMETRY_POLICIES = ("strict_predefined", "sparse_observed")
+
+def pixel_geometry_policy(req):
+    return req.get("pixel_metadata", {}).get(
+        "pixel_geometry_policy", "strict_predefined")
 
 def sha(path: Path) -> str:
     h = hashlib.sha256()
@@ -18,6 +27,18 @@ def sha(path: Path) -> str:
 def issue(code, message, category="configuration"):
     return {"check_id": code, "status": "FAIL", "category": category,
             "message": message, "blocking": True}
+
+def resolve_executable(configured):
+    value = str(configured or "").strip()
+    if not value:
+        return None
+    resolved = shutil.which(value)
+    return str(Path(resolved).resolve()) if resolved else None
+
+def run_rscript(executable, script, workspace, stdout, stderr):
+    return run_external_process(
+        [executable, str(script)], scientific_script=script,
+        project_path=workspace, stdout=stdout, stderr=stderr)
 
 def rquote(value) -> str:
     return '"' + str(value).replace("\\", "/").replace('"', '\\"') + '"'
@@ -49,7 +70,7 @@ def target_shape(path: Path, id_column: str, mz_column: str):
         errors.append("Feature identifiers are duplicated.")
     return header, rows, errors
 
-def validate_request(req, check_environment=True):
+def validate_request(req, check_environment=True, r_executable=UNRESOLVED):
     problems = []
     if req.get("stage_id") != "extract_pixel_intensities":
         problems.append(issue("stage.unsupported", "Expected extract_pixel_intensities.", "scientific"))
@@ -132,9 +153,18 @@ def validate_request(req, check_environment=True):
         problems.append(issue("acquisition.pixel_size", "Pixel size must be positive.", "scientific"))
     if acquisition.get("full_pixel") is not True:
         problems.append(issue("acquisition.full_pixel", "Generic FullPixel v1 requires full-pixel data.", "scientific"))
+    policy = pixel_geometry_policy(req)
+    if policy not in PIXEL_GEOMETRY_POLICIES:
+        problems.append(issue("acquisition.pixel_geometry_policy",
+                              "Pixel geometry policy must be strict_predefined or sparse_observed.",
+                              "scientific"))
     coordinates = req.get("pixel_metadata", {}).get("expected_coordinate_count")
-    if not isinstance(coordinates, int) or coordinates <= 0:
+    if (policy == "strict_predefined" and
+            (not isinstance(coordinates, int) or coordinates <= 0)):
         problems.append(issue("acquisition.coordinates", "Expected coordinate count must be a positive integer.", "scientific"))
+    elif (coordinates is not None and
+          (not isinstance(coordinates, int) or coordinates <= 0)):
+        problems.append(issue("acquisition.coordinates", "Declared expected coordinate count must be a positive integer when supplied.", "scientific"))
     target = req.get("registered_inputs", {}).get("aligned_target_table", {})
     target_path = Path(target.get("path", ""))
     if not target_path.is_file():
@@ -149,6 +179,10 @@ def validate_request(req, check_environment=True):
         if not rows:
             problems.append(issue("input.target_empty", "Aligned target table contains no feature rows.", "input"))
     cfg = req.get("approved_scientific_configuration", {})
+    try:
+        resolve_method(req)
+    except ValueError as exc:
+        problems.append(issue("scientific.normalization_method", str(exc), "scientific"))
     try:
         absolute_tolerance = float(cfg.get("absolute_tolerance"))
         ppm_tolerance = float(cfg.get("ppm_tolerance"))
@@ -206,9 +240,14 @@ def validate_request(req, check_environment=True):
     if workspace.exists() and any(workspace.iterdir()):
         problems.append(issue("workspace.not_empty", "Output workspace must be absent or empty.", "infrastructure"))
     if check_environment:
-        rex = Path(req.get("environment_requirements", {}).get("r_executable", ""))
-        if not rex.is_file():
-            problems.append(issue("environment.r", "Configured Rscript is unavailable.", "environment"))
+        if r_executable is UNRESOLVED:
+            r_executable = resolve_executable(
+                req.get("environment_requirements", {}).get("r_executable", ""))
+        if r_executable is None:
+            problems.append(issue(
+                "environment.r",
+                "Configured Rscript executable could not be resolved.",
+                "environment"))
     return problems
 
 def make_copy(req, workspace: Path):
@@ -227,6 +266,10 @@ def make_copy(req, workspace: Path):
     analysis = (workspace / "analysis").resolve()
     mode = "Positive" if req["ion_mode"] == "POS" else "Negative"
     cfg = req["approved_scientific_configuration"]
+    geometry_policy = pixel_geometry_policy(req)
+    coordinate_count = req.get("pixel_metadata", {}).get("expected_coordinate_count")
+    expected_coordinate_r = (f"{int(coordinate_count)}L" if coordinate_count is not None
+                             else "NA_integer_")
     panel = f'''dataset_id <- {rquote(req["dataset_id"])}
 
 raw_data_root <-
@@ -243,7 +286,8 @@ expected_ion_mode <- {rquote(mode)}
 expected_matrix <- {rquote(acq["matrix"])}
 expected_pixel_size_um <- {float(acq["pixel_size_um"])}
 expected_full_pixel <- TRUE
-expected_coordinate_pixels <- {int(req["pixel_metadata"]["expected_coordinate_count"])}L
+pixel_geometry_policy <- {rquote(geometry_policy)}
+expected_coordinate_pixels <- {expected_coordinate_r}
 mzmine_expected_row_range <- c({len(target_rows)}L, {len(target_rows)}L)
 
 expected_sample_ids <- {rvec([x["sample_id"] for x in samples])}
@@ -270,6 +314,7 @@ inclusive_detection_threshold <- {cfg["inclusive_detection_threshold"]}
 conservative_detection_threshold <- {cfg["conservative_detection_threshold"]}
 
 normalization_scale <- {cfg["normalization_scale"]}
+primary_normalization_method <- {rquote(resolve_method(req))}
 
 save_pixel_level_output <- {"TRUE" if req["retention_options"]["save_pixel_level_output"] else "FALSE"}
 
@@ -277,6 +322,12 @@ primary_detection_threshold <- {cfg["primary_detection_threshold"]}
 primary_minimum_detected_pixels <- {int(cfg["primary_minimum_detected_pixels"])}L
 '''
     generated = original[:start] + panel + original[end:]
+    extension = ROOT / "tools" / "normalization_execution_extension.R"
+    install = (f'\nsource({rquote(extension.as_posix())}, local = .GlobalEnv)\n'
+               'fpq_v2_install_normalization_extension(primary_normalization_method)\n\nmain()\n')
+    if not generated.endswith("main()\n"):
+        raise RuntimeError("Validated Script 01 main-call boundary was not found.")
+    generated = generated[:-len("main()\n")] + install
     old_exposure = '''  if (!scalar_text(expected_exposure) ||
       !expected_exposure %in% c("Single", "Sequential")) {
     stop_critical("Configuration error: expected_exposure must be Single or Sequential.")
@@ -306,6 +357,41 @@ primary_minimum_detected_pixels <- {int(cfg["primary_minimum_detected_pixels"])}
     if old_samples not in generated:
         raise RuntimeError("Sample-validation anchor was not found.")
     generated = generated.replace(old_samples, new_samples, 1)
+    old_geometry_validation = '''  if (!scalar_number(expected_coordinate_pixels, strictly_positive = TRUE) ||
+      expected_coordinate_pixels != as.integer(expected_coordinate_pixels)) {
+    stop_critical("Configuration error: expected_coordinate_pixels must be a positive integer.")
+  }
+'''
+    new_geometry_validation = '''  if (!scalar_text(pixel_geometry_policy) ||
+      !pixel_geometry_policy %in% c("strict_predefined", "sparse_observed")) {
+    stop_critical("Configuration error: pixel_geometry_policy is unsupported.")
+  }
+  if (identical(pixel_geometry_policy, "strict_predefined") &&
+      (!scalar_number(expected_coordinate_pixels, strictly_positive = TRUE) ||
+       expected_coordinate_pixels != as.integer(expected_coordinate_pixels))) {
+    stop_critical("Configuration error: expected_coordinate_pixels must be a positive integer.")
+  }
+'''
+    if generated.count(old_geometry_validation) != 1:
+        raise RuntimeError("Coordinate-configuration validation anchor was not unique.")
+    generated = generated.replace(old_geometry_validation, new_geometry_validation, 1)
+    old_coordinate_guard = '''  if (inspect$n_coords != expected_coordinate_pixels) {
+    stop_critical(
+      "Unexpected coordinate count for",
+      selected$sample_id,
+      "- expected",
+      expected_coordinate_pixels,
+      "but found",
+      inspect$n_coords
+    )
+  }
+'''
+    new_coordinate_guard = old_coordinate_guard.replace(
+        "if (inspect$n_coords != expected_coordinate_pixels)",
+        'if (identical(pixel_geometry_policy, "strict_predefined") &&\n      inspect$n_coords != expected_coordinate_pixels)')
+    if generated.count(old_coordinate_guard) != 1:
+        raise RuntimeError("Coordinate-count guard anchor was not unique.")
+    generated = generated.replace(old_coordinate_guard, new_coordinate_guard, 1)
     generated = generated.replace('paste0("SixSample_", timestamp)', 'paste0("SampleSet_", timestamp)', 1)
     discover_start = generated.index("discover_imzml_pairs <- function(output_dir) {")
     discover_end = generated.index("###############################################################################\n# MZMINE-TARGET VALIDATION", discover_start)
@@ -355,6 +441,89 @@ primary_minimum_detected_pixels <- {int(cfg["primary_minimum_detected_pixels"])}
             raise RuntimeError(
                 "Validated extraction-window calculation anchor was not unique.")
         generated = generated.replace(old_window, new_window, 1)
+    policy_config_anchor = "    expected_coordinate_pixels = as.character(expected_coordinate_pixels),\n"
+    if generated.count(policy_config_anchor) != 1:
+        raise RuntimeError("Analysis-configuration geometry anchor was not unique.")
+    generated = generated.replace(policy_config_anchor, policy_config_anchor +
+        "    pixel_geometry_policy = pixel_geometry_policy,\n", 1)
+    qc_anchor = '''      number_of_spectra = inspect$n_spectra,
+      number_of_coordinates = inspect$n_coords,
+      number_of_unique_coordinates = inspect$n_unique_coords,
+      coordinate_dimensions = paste(length(unique(inspect$coords$x)), "x", length(unique(inspect$coords$y))),
+'''
+    qc_replacement = '''      number_of_spectra = inspect$n_spectra,
+      number_of_coordinates = inspect$n_coords,
+      number_of_unique_coordinates = inspect$n_unique_coords,
+      pixel_geometry_policy = pixel_geometry_policy,
+      observed_coordinate_count = inspect$n_coords,
+      condition_id = selected$condition,
+      min_x = inspect$x_range[[1L]],
+      max_x = inspect$x_range[[2L]],
+      min_y = inspect$y_range[[1L]],
+      max_y = inspect$y_range[[2L]],
+      unique_x_count = length(unique(inspect$coords$x)),
+      unique_y_count = length(unique(inspect$coords$y)),
+      extent_position_count = (inspect$x_range[[2L]] - inspect$x_range[[1L]] + 1) *
+        (inspect$y_range[[2L]] - inspect$y_range[[1L]] + 1),
+      missing_positions_within_extent =
+        (inspect$x_range[[2L]] - inspect$x_range[[1L]] + 1) *
+        (inspect$y_range[[2L]] - inspect$y_range[[1L]] + 1) - inspect$n_coords,
+      stored_coordinate_fraction_of_extent = inspect$n_coords /
+        ((inspect$x_range[[2L]] - inspect$x_range[[1L]] + 1) *
+         (inspect$y_range[[2L]] - inspect$y_range[[1L]] + 1)),
+      duplicate_coordinate_count = inspect$duplicated_coordinates,
+      coordinate_dimensions = paste(length(unique(inspect$coords$x)), "x", length(unique(inspect$coords$y))),
+'''
+    if generated.count(qc_anchor) != 1:
+        raise RuntimeError("Sample geometry QC anchor was not unique.")
+    generated = generated.replace(qc_anchor, qc_replacement, 1)
+    qc_write_anchor = '''  data.table::fwrite(
+    sample_qc_dt,
+    file.path(dirs$run, "sample_extraction_qc.csv")
+  )
+'''
+    qc_write_replacement = qc_write_anchor + '''  geometry_columns <- c(
+    "sample_id", "condition_id", "replicate", "pixel_geometry_policy",
+    "observed_coordinate_count", "min_x", "max_x", "min_y", "max_y",
+    "unique_x_count", "unique_y_count", "extent_position_count",
+    "missing_positions_within_extent", "stored_coordinate_fraction_of_extent",
+    "duplicate_coordinate_count"
+  )
+  data.table::fwrite(
+    sample_qc_dt[, geometry_columns, with = FALSE],
+    file.path(dirs$run, "sample_geometry_qc.csv")
+  )
+'''
+    if generated.count(qc_write_anchor) != 1:
+        raise RuntimeError("Sample QC output anchor was not unique.")
+    generated = generated.replace(qc_write_anchor, qc_write_replacement, 1)
+    report_geometry_anchor = '''    paste(
+      "All samples have the configured number of coordinates:",
+      all(sample_qc_dt$number_of_coordinates == expected_coordinate_pixels)
+    ),
+    paste(
+      "All samples have the configured number of unique coordinates:",
+      all(sample_qc_dt$number_of_unique_coordinates == expected_coordinate_pixels)
+    ),
+'''
+    report_geometry_replacement = '''    paste("Pixel geometry policy:", pixel_geometry_policy),
+    paste(
+      "Strict configured coordinate-count equality:",
+      if (identical(pixel_geometry_policy, "strict_predefined"))
+        all(sample_qc_dt$number_of_coordinates == expected_coordinate_pixels)
+      else "not applicable; observed stored coordinates used"
+    ),
+    paste(
+      "Strict configured unique-coordinate-count equality:",
+      if (identical(pixel_geometry_policy, "strict_predefined"))
+        all(sample_qc_dt$number_of_unique_coordinates == expected_coordinate_pixels)
+      else "not applicable; structural uniqueness guard retained"
+    ),
+'''
+    if generated.count(report_geometry_anchor) != 1:
+        raise RuntimeError("Diagnostic-report geometry anchor was not unique.")
+    generated = generated.replace(
+        report_geometry_anchor, report_geometry_replacement, 1)
     config_anchor =         "    ppm_tolerance = as.character(ppm_tolerance),\n"
     config_replacement = config_anchor +         "    tolerance_combination_rule = tolerance_combination_rule,\n"
     if generated.count(config_anchor) != 1:
@@ -367,6 +536,8 @@ primary_minimum_detected_pixels <- {int(cfg["primary_minimum_detected_pixels"])}
     transformations = {
         "source_hash": sha(frozen), "execution_copy_hash": sha(path),
         "configuration_boundary": "request-driven",
+        "pixel_geometry_policy": geometry_policy,
+        "normalization": provenance(resolve_method(req), cfg["normalization_scale"]),
         "input_discovery": "explicit registered sample manifest",
         "sample_count": len(samples), "target_count": len(target_rows),
         "mass_tolerance": {
@@ -376,7 +547,8 @@ primary_minimum_detected_pixels <- {int(cfg["primary_minimum_detected_pixels"])}
         },
         "calculation_sections_changed": strict_rule,
         "generic_boundary_changes": ["dynamic exposure label", "dynamic sample count",
-            "explicit registered imzML/IBD manifest", "generic output naming"] +
+            "explicit registered imzML/IBD manifest", "generic output naming",
+            "policy-dependent coordinate-count guard", "per-sample geometry QC"] +
             (["strict smaller-of ppm/Da extraction window"] if strict_rule else [])
     }
     (workspace / "configuration_transformations.json").write_text(json.dumps(transformations, indent=2), encoding="utf-8")
@@ -411,7 +583,10 @@ def main():
     report = {"schema_version": "1.0.0", "run_id": req.get("run_id"),
               "stage_id": req.get("stage_id"), "status": "preflight_failed",
               "validation_records": [], "produced_outputs": []}
-    problems = validate_request(req)
+    configured_r_executable = req.get(
+        "environment_requirements", {}).get("r_executable", "")
+    resolved_r_executable = resolve_executable(configured_r_executable)
+    problems = validate_request(req, r_executable=resolved_r_executable)
     report["validation_records"] = problems
     if problems:
         report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -423,12 +598,13 @@ def main():
         stdout, stderr = workspace / "stdout.log", workspace / "stderr.log"
         report.update(status="running", execution_started=True, frozen_script_hash=SCRIPT_HASH,
                       execution_copy_hash=sha(copy), configuration_transformations=transformations,
-                      stdout_path=str(stdout), stderr_path=str(stderr))
+                      stdout_path=str(stdout), stderr_path=str(stderr),
+                      r_executable_configured=configured_r_executable,
+                      r_executable_resolved=resolved_r_executable)
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-        rex = req["environment_requirements"]["r_executable"]
         with stdout.open("w", encoding="utf-8") as out, stderr.open("w", encoding="utf-8") as err:
-            process = subprocess.run([rex, str(copy)], cwd=workspace, stdout=out, stderr=err)
+            process = run_rscript(resolved_r_executable, copy, workspace, out, err)
         report["process_exit_status"] = process.returncode
         if process.returncode:
             raise RuntimeError("Generic Script 01 execution exited unsuccessfully.")
@@ -439,6 +615,9 @@ def main():
         output = directories[0] / "sample_set_combined_feature_summary.csv"
         if not output.is_file():
             raise RuntimeError("Required generic sample-set summary is missing.")
+        geometry_output = directories[0] / "sample_geometry_qc.csv"
+        if not geometry_output.is_file():
+            raise RuntimeError("Required per-sample geometry QC artifact is missing.")
         validation = inspect_output(output, [x["sample_id"] for x in req["samples"]], target_count)
         if validation["status"] != "PASS":
             raise RuntimeError("Generic extraction output structure failed validation.")
@@ -446,7 +625,12 @@ def main():
                     "artifact_role": "sample_set_combined_feature_summary.csv",
                     "path": str(output), "sha256": sha(output), "bytes": output.stat().st_size,
                     "rows": validation["rows"], "columns": validation["columns"]}
-        report.update(status="completed", produced_outputs=[artifact], output_validation=validation,
+        geometry_artifact = {"artifact_id": "art-" + req["run_id"] + "-geometry-qc",
+                    "artifact_role": "sample_geometry_qc.csv",
+                    "path": str(geometry_output), "sha256": sha(geometry_output),
+                    "bytes": geometry_output.stat().st_size}
+        report.update(status="completed", produced_outputs=[artifact, geometry_artifact],
+                      geometry_qc=geometry_artifact, output_validation=validation,
                       validation_records=[{"check_id": "generic.script01.output", "status": "PASS",
                         "category": "scientific", "blocking": False,
                         "message": "Dynamic sample and target dimensions, sample coverage, and required quantitative columns passed."}])

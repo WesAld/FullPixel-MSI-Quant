@@ -18,7 +18,8 @@ fpq_windows_process_info <- function(pid) {
   if (.Platform$OS.type != "windows") {
     alive <- tryCatch({
       result <- processx::run("kill", c("-0", as.character(pid)),
-        echo = FALSE, error_on_status = FALSE)
+        wd = fpq_safe_subprocess_cwd(), echo = FALSE,
+        error_on_status = FALSE)
       identical(result$status, 0L)
     }, error = function(e) FALSE)
     return(list(alive = alive, pid = pid, parent_pid = NULL,
@@ -39,7 +40,8 @@ fpq_windows_process_info <- function(pid) {
   )
   result <- processx::run(powershell,
     c("-NoProfile", "-NonInteractive", "-Command", script),
-    echo = FALSE, error_on_status = FALSE, timeout = 10000)
+    wd = fpq_safe_subprocess_cwd(), echo = FALSE,
+    error_on_status = FALSE, timeout = 10000)
   if (result$status == 3L || !nzchar(trimws(result$stdout)))
     return(list(alive = FALSE, pid = pid))
   if (result$status != 0L)
@@ -237,10 +239,12 @@ fpq_terminate_worker_tree <- function(project, run_id,
   if (.Platform$OS.type == "windows") {
     result <- executor("taskkill",
       c("/PID", as.character(identity$process_id), "/T", "/F"),
-      echo = FALSE, error_on_status = FALSE)
+      wd = fpq_safe_subprocess_cwd(), echo = FALSE,
+      error_on_status = FALSE)
   } else {
     result <- executor("kill", c("-TERM", as.character(identity$process_id)),
-      echo = FALSE, error_on_status = FALSE)
+      wd = fpq_safe_subprocess_cwd(), echo = FALSE,
+      error_on_status = FALSE)
   }
   fpq_log_event(project, "worker.termination_escalated",
     run_id = run_id, details = list(worker_id = identity$worker_id,

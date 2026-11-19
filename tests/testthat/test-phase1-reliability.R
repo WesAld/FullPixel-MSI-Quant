@@ -14,7 +14,7 @@ test_that("project creation publishes only a readable validated manifest", {
   project <- fpq_create_project(root, "prj-transaction-test", "Transactional project",
     project_description = "Read-back test",
     project_preferences = list(investigator_or_laboratory = "Test laboratory"))
-  expect_true(file.exists(file.path(root, "project.json")))
+  expect_true(file.exists(fpq_project_paths(root)$manifest))
   reopened <- fpq_open_project(root)
   expect_identical(reopened$manifest$project_id, "prj-transaction-test")
   expect_identical(reopened$manifest$project_description, "Read-back test")
