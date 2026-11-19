@@ -57,7 +57,7 @@ test_that("Home actions target Project Create and Open", {
     'input$open_project,\n      fpq_v4_navigate(session$rootScope(), "project_open")',
     fixed = TRUE)
   expect_match(source, "Welcome to MALDIPixelQuant", fixed = TRUE)
-  expect_match(source, "2.0.0", fixed = TRUE)
+  expect_match(source, "2.0.1", fixed = TRUE)
 })
 
 test_that("Home presents the approved scientific workflow summary", {
@@ -189,8 +189,8 @@ test_that("visible runtime identity is MALDIPixelQuant V2", {
   source <- paste(readLines(file.path(fpq_repo_root(), "R", "v4_shell.R"),
     warn = FALSE), collapse = "\n")
   expect_match(source, 'tags$title("MALDIPixelQuant")', fixed = TRUE)
-  expect_match(source, "V2 / 2.0.0", fixed = TRUE)
+  expect_match(source, "V2 / 2.0.1", fixed = TRUE)
   expect_false(grepl("MALDIPixelQuant V4", source, fixed = TRUE))
   expect_identical(trimws(readLines(file.path(fpq_repo_root(), "VERSION"))),
-                   "2.0.0")
+                   "2.0.1")
 })

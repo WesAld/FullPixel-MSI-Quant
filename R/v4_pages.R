@@ -578,7 +578,7 @@ fpq_about_ui <- function(id) {
     htmltools::tags$p(
       "MALDIPixelQuant is a graphical user interface for quantitative analysis of MALDI mass spectrometry imaging data, including pixel-level quantification, biological-replicate statistics, and integration of putative metabolite annotations."),
     htmltools::tags$dl(class = "fpq-v4-version-list",
-      htmltools::tags$dt("Application version"), htmltools::tags$dd("2.0.0"),
+      htmltools::tags$dt("Application version"), htmltools::tags$dd("2.0.1"),
       htmltools::tags$dt("Package version"), htmltools::tags$dd(
         as.character(utils::packageVersion("FullPixelMSIQuant"))),
       htmltools::tags$dt("Scientific core"), htmltools::tags$dd("1.0.0")),

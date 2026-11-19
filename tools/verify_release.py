@@ -83,14 +83,14 @@ def main() -> int:
             failures.append(f"Missing required release file: {relative}")
 
     version_path = ROOT / "VERSION"
-    if version_path.is_file() and version_path.read_text(encoding="utf-8").strip() != "2.0.0":
-        failures.append("VERSION is not 2.0.0.")
+    if version_path.is_file() and version_path.read_text(encoding="utf-8").strip() != "2.0.1":
+        failures.append("VERSION is not 2.0.1.")
 
     description_path = ROOT / "DESCRIPTION"
     if description_path.is_file():
         description = description_path.read_text(encoding="utf-8")
-        if not re.search(r"^Version:\s*2\.0\.0\s*$", description, re.MULTILINE):
-            failures.append("DESCRIPTION does not declare Version 2.0.0.")
+        if not re.search(r"^Version:\s*2\.0\.1\s*$", description, re.MULTILINE):
+            failures.append("DESCRIPTION does not declare Version 2.0.1.")
         if "maintainers@example.invalid" in description:
             failures.append("DESCRIPTION still contains the placeholder maintainer.")
 
@@ -171,7 +171,7 @@ def main() -> int:
     print("JSON_YAML_SYNTAX: PASS")
     print("PUBLIC_PATH_PRIVACY_SCAN: PASS")
     print("FORBIDDEN_DATA_FILE_SCAN: PASS")
-    print("MALDIPIXELQUANT RELEASE 2.0.0: PASS")
+    print("MALDIPIXELQUANT RELEASE 2.0.1: PASS")
     return 0
 
 

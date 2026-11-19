@@ -49,7 +49,7 @@ class NormalizationRoutingTests(unittest.TestCase):
         for method in MODULE.METHODS:
             record = MODULE.provenance(method, 1_000_000)
             self.assertEqual(record["primary_normalization_method"], method)
-            self.assertEqual(record["application_version"], "2.0.0")
+            self.assertEqual(record["application_version"], "2.0.1")
             self.assertEqual(record["normalization_scale"], 1_000_000)
 
     def test_workbook_sheet_names_preserve_tic_and_route_other_methods(self):

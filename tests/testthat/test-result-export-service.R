@@ -32,7 +32,7 @@ make_result_export_fixture <- function(method = "raw", status = "completed",
     created_at = fpq_now(), updated_at = fpq_now(), finished_at = fpq_now(),
     output_folder = normalizePath(run_dir, winslash = "/"),
     display_metadata = list(
-      normalization = list(application_version = "2.0.0",
+      normalization = list(application_version = "2.0.1",
         primary_normalization_method = method),
       jackknife = list(enabled = jackknife, requested = jackknife)),
     final_workbook = list(path = artifact$path, sha256 = sha256,
