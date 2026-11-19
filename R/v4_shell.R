@@ -79,7 +79,7 @@ fpq_home_server <- function(id, state) {
                 fpq_v4_status_item("shield", "Validation", htmltools::HTML("&mdash;")),
                 fpq_v4_status_item("circle-play", "Active run", htmltools::HTML("&mdash;")),
                 fpq_v4_status_item("server", "Version",
-                  htmltools::tagList(htmltools::tags$span("App 2.0.1"),
+                  htmltools::tagList(htmltools::tags$span("App 2.0.2"),
                                      htmltools::tags$span(
                                        "Scientific core 1.0.0"))))),
             htmltools::tags$section(class = "fpq-v4-getting-started fpq-v4-surface",
@@ -206,7 +206,7 @@ fpq_v4_sidebar <- function() {
         shiny::checkboxInput("advanced_mode", "Advanced Mode", FALSE)),
       htmltools::tags$div(class = "fpq-v4-version",
         htmltools::tags$strong("MALDIPixelQuant"),
-        htmltools::tags$span("V2 / 2.0.1"),
+        htmltools::tags$span("V2 / 2.0.2"),
         htmltools::tags$span("Scientific core 1.0.0")))
   )
 }

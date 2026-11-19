@@ -32,7 +32,7 @@ make_result_export_fixture <- function(method = "raw", status = "completed",
     created_at = fpq_now(), updated_at = fpq_now(), finished_at = fpq_now(),
     output_folder = normalizePath(run_dir, winslash = "/"),
     display_metadata = list(
-      normalization = list(application_version = "2.0.1",
+      normalization = list(application_version = "2.0.2",
         primary_normalization_method = method),
       jackknife = list(enabled = jackknife, requested = jackknife)),
     final_workbook = list(path = artifact$path, sha256 = sha256,
@@ -57,9 +57,10 @@ test_that("successful export is byte-identical and records provenance", {
   fixture <- make_result_export_fixture("rms", jackknife = TRUE)
   destination <- tempfile("fpq-export-destination-")
   dir.create(destination)
+  repository_root <- normalizePath(file.path(getwd(), "..", ".."))
   result <- fpq_export_validated_result(fixture$project,
     fixture$workflow$workflow_id, destination,
-    repository_root = normalizePath(file.path(getwd(), "..", "..")))
+    repository_root = repository_root)
   expect_true(result$exported)
   expect_equal(result$filename,
     "Project_RMS_MALDIPixelQuant_Results.xlsx")
@@ -74,7 +75,31 @@ test_that("successful export is byte-identical and records provenance", {
   expect_equal(edge$normalization_method, "rms")
   expect_true(edge$jackknife_enabled)
   expect_equal(edge$source_sha256, edge$destination_sha256)
-  expect_true(nzchar(edge$software_commit))
+  expect_equal(edge$application_version, "2.0.2")
+  expected_commit <- fpq_repository_commit(repository_root)
+  if (is.na(expected_commit)) {
+    expect_null(edge$software_commit)
+  } else {
+    expect_identical(edge$software_commit, expected_commit)
+  }
+})
+
+test_that("source archives record version without inventing a Git commit", {
+  fixture <- make_result_export_fixture("raw")
+  destination <- tempfile("fpq-export-archive-destination-")
+  archive_root <- tempfile("fpq-source-archive-")
+  dir.create(destination)
+  dir.create(archive_root)
+  expect_true(is.na(fpq_repository_commit(archive_root)))
+  result <- fpq_export_validated_result(fixture$project,
+    fixture$workflow$workflow_id, destination,
+    repository_root = archive_root)
+  expect_true(result$exported)
+  provenance <- fpq_read_collection(
+    fpq_project_paths(fixture$project$root)$provenance)
+  edge <- provenance[[length(provenance)]]
+  expect_equal(edge$application_version, "2.0.2")
+  expect_null(edge$software_commit)
 })
 
 test_that("historical workflow method controls export despite current configuration", {

@@ -67,9 +67,12 @@ fpq_result_export_eligibility <- function(project, workflow_id) {
 fpq_repository_commit <- function(repository_root) {
   if (is.null(repository_root) || !dir.exists(repository_root)) return(NA_character_)
   root <- normalizePath(repository_root, winslash = "/")
-  value <- tryCatch(system2("git", c("-c", shQuote(paste0("safe.directory=", root)),
-    "-C", shQuote(root), "rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE),
-    error = function(e) character())
+  git_marker <- file.path(root, ".git")
+  if (!file.exists(git_marker) && !dir.exists(git_marker)) return(NA_character_)
+  value <- tryCatch(suppressWarnings(system2("git",
+    c("-c", shQuote(paste0("safe.directory=", root)),
+      "-C", shQuote(root), "rev-parse", "HEAD"),
+    stdout = TRUE, stderr = FALSE)), error = function(e) character())
   if (length(value) == 1L && grepl("^[0-9a-fA-F]{40}$", value)) value else NA_character_
 }
 

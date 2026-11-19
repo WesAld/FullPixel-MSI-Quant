@@ -1,6 +1,6 @@
 # MALDIPixelQuant V2
 
-**Current public release: 2.0.1**<br>
+**Current public release: 2.0.2**<br>
 
 MALDIPixelQuant is a local R Shiny application for pixel-level quantitative
 analysis of full-pixel MALDI mass spectrometry imaging data. An aligned MZmine
@@ -92,7 +92,8 @@ powershell.exe -ExecutionPolicy Bypass -File .\Install-Dependencies.ps1
 ```
 
 The installer adds the required R and Python packages. It does not install R or
-Python themselves.
+Python themselves. On Windows, it discovers `Rscript.exe` from `PATH` or from
+standard system and user R installation directories.
 
 Verify the frozen scientific core:
 
@@ -162,7 +163,7 @@ evidence.
 
 ## Version history
 
-- **V2 / 2.0.1** — current public release: redesigned GUI, selectable
+- **V2 / 2.0.2** — current public release: redesigned GUI, selectable
   normalization, optional jackknife robustness analysis, hardened validation and
   workflow handling, publication-ready exports, and validated result freeze/export.
 - **V1** — original public release series (`v1.0.0` through `v1.1.1`).
@@ -171,14 +172,14 @@ Internal development iterations between the original release and V2 remain in
 Git history but were not separate public releases.
 
 See [`CHANGELOG.md`](CHANGELOG.md) and
-[`docs/RELEASE_NOTES_V2.0.1.md`](docs/RELEASE_NOTES_V2.0.1.md).
+[`docs/RELEASE_NOTES_V2.0.2.md`](docs/RELEASE_NOTES_V2.0.2.md).
 
 ## Citation
 
 Citation metadata are provided in [`CITATION.cff`](CITATION.cff). No software or
 manuscript DOI is currently declared. Cite the repository release as:
 
-> Alderden, W. (2026). *MALDIPixelQuant* (Version 2.0.1) [Computer software].
+> Alderden, W. (2026). *MALDIPixelQuant* (Version 2.0.2) [Computer software].
 > GitHub. https://github.com/WesAld/FullPixel-MSI-Quant
 
 ## Contributing, support, and license

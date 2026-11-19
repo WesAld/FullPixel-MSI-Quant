@@ -4,6 +4,21 @@ All notable changes to MALDIPixelQuant are documented here.
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-11-19
+
+### Fixed
+
+- Added automatic discovery of installed R versions for the Windows dependency
+  installer when `Rscript.exe` is not on `PATH`.
+- Declared PyYAML as a required Python dependency for release verification.
+- Made result-export provenance and its regression tests portable to GitHub
+  source archives that do not contain Git metadata.
+
+### Scientific compatibility
+
+- No analytical implementation, scientific calculation, or validated-source
+  file changed relative to V2.0.1.
+
 ## [2.0.1] - 2026-11-19
 
 ### Changed
@@ -131,7 +146,8 @@ All notable changes to MALDIPixelQuant are documented here.
 - Release remains classified as a Technical Validation Candidate because an
   independent scientific reference oracle has not been established.
 
-[Unreleased]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.1.1...v2.0.0
 [1.1.1]: https://github.com/WesAld/FullPixel-MSI-Quant/compare/v1.1.0...v1.1.1
