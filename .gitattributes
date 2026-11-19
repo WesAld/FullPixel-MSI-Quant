@@ -1,5 +1,6 @@
 # Keep ordinary source files portable.
 .gitattributes text eol=lf
+.Rbuildignore text eol=lf
 *.R text eol=lf
 *.py text eol=lf
 *.md text eol=lf

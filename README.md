@@ -1,7 +1,6 @@
 # MALDIPixelQuant V2
 
 **Current public release: 2.0.0**<br>
-**Scientific classification: Technical Validation Candidate**
 
 MALDIPixelQuant is a local R Shiny application for pixel-level quantitative
 analysis of full-pixel MALDI mass spectrometry imaging data. An aligned MZmine
@@ -144,20 +143,6 @@ Depending on the analysis design and selected method, final workbooks contain:
 - an optional `Jackknife_Log2FC` worksheet for eligible two-group projects.
 
 See [`docs/OUTPUTS.md`](docs/OUTPUTS.md) for the method-specific sheet contracts.
-
-## Validation and limitations
-
-MALDIPixelQuant V2 passed the repository's automated R and Python test suites,
-frozen scientific-core integrity verification, and end-to-end GUI/workbook
-validation using external PVL MALDI-MSI datasets. Raw, spectrum-sum, RMS, and
-Median selection, persistence, execution, and final export were verified. The
-frozen scientific scripts are distributed with registered SHA-256 hashes.
-
-The software retains the **Technical Validation Candidate** classification. It
-has not been independently validated against a separate quantitative software
-pipeline, certified reference material, or external reference oracle.
-Annotations are putative accurate-mass matches. The software is not intended for
-clinical or diagnostic use. See [`docs/VALIDATION.md`](docs/VALIDATION.md).
 
 ## Repository structure
 

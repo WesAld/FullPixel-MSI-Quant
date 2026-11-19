@@ -35,11 +35,10 @@ signals directly from centroided imzML/IBD spectra.
 - The four registered scripts under `validated-source/` remain byte-identical
   to their recorded SHA-256 hashes.
 
-The software retains the **Technical Validation Candidate** scientific
-classification. RMS and Median are robustness/sensitivity strategies and are
-not claimed to be scientifically superior to spectrum-sum. Molecular
-annotations remain putative accurate-mass matches. MALDIPixelQuant is not
-intended for clinical or diagnostic use.
+RMS and Median are robustness/sensitivity strategies and are not claimed to be
+scientifically superior to spectrum-sum. Molecular annotations remain putative
+accurate-mass matches. MALDIPixelQuant is not intended for clinical or
+diagnostic use.
 
 ## Compatibility and inputs
 

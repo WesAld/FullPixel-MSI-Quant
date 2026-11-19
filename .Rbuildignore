@@ -1,6 +1,5 @@
 ^\.git$
 ^\.github$
-^\.openai$
 ^\.venv$
 ^renv$
 ^generated-outputs$

@@ -45,9 +45,8 @@ All notable changes to MALDIPixelQuant are documented here.
   within the established numerical tolerance.
 - The automated R and Python suites and frozen scientific-core integrity checks
   pass for the release candidate.
-- The software retains the Technical Validation Candidate scientific
-  classification; RMS and Median are not claimed to be scientifically superior
-  to spectrum-sum.
+- RMS and Median are not claimed to be scientifically superior to
+  spectrum-sum.
 
 ## [1.1.1] - 2026-08-01
 
